@@ -11,7 +11,8 @@ hard_velo_min = 90
 soff_velo_max = 13
 soff_velo_min = 8
 ppq = 960
-nudge = 64
+nudge = 12
+downstroke = true
 
 take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
 retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
@@ -36,7 +37,7 @@ function pairsByKeys (t, f)
 end 
 
 
-function humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min,nudge)
+function humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min,nudge,downstroke)
   notesordered = {}
   for j = 0, notes-1 do
       retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
@@ -47,7 +48,6 @@ function humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min,nudge)
   end
   table.sort(notesordered)
 
-  local reverse = false
   for key,value in pairs(notesordered) 
   do
       k = 0	
@@ -57,14 +57,12 @@ function humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min,nudge)
       -- initialize random base velocity
       randomval = math.random(hard_velo_min, hard_velo_max);
 
-      if reverse == true then
-          f = function (a, b) return a>b end
-          reverse = false
-      else
+      
+      if downstroke then
           f = nil
-          reverse = true
+      else
+          f = function (a, b) return a>b end
       end
-
       for key,value in pairsByKeys(subarray, f) 
       do
           retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, value)
@@ -110,13 +108,13 @@ function frame()
 
 
   if reaper.ImGui_Button(ctx, 'HUMANIZE!!!') then
-    humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min)
+    humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min, nudge, downstroke)
   end
 
   reaper.ImGui_Text(ctx, 'Advanced Settings')
   rv, ppq = reaper.ImGui_InputInt(ctx, 'Midi Ticks per Quarter', ppq)
-  local items = "128 \31 64\31 32"
-  rv,nudge = reaper.ImGui_Combo(ctx, 'Chord Nudge Length', nudge, items, 4)
+  rv, nudge = reaper.ImGui_InputInt(ctx, 'Chord Nudge Length', nudge)
+  rv, downstroke = reaper.ImGui_Checkbox(ctx, 'Downstroke?', downstroke)
 end
 
 -- initalize ReaImGui
