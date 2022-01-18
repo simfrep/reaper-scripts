@@ -78,11 +78,31 @@ function humanize(hard_velo_max,hard_velo_min,soff_velo_max,soff_velo_min,nudge)
   end
 end
 
+function palm_mute_velos()
+  hard_velo_max = 50
+  hard_velo_min = 30
+  soff_velo_max = 8
+  soff_velo_min = 4
+end
+
+function normal_velos()
+  hard_velo_max = 110
+  hard_velo_min = 90
+  soff_velo_max = 13
+  soff_velo_min = 8
+end
 
 -- Define Content of ReaImgUi
 function frame()
   local rv
- 
+
+  if reaper.ImGui_Button(ctx, 'Normal Velos') then
+    normal_velos()
+  end
+  reaper.ImGui_SameLine(ctx)
+  if reaper.ImGui_Button(ctx, 'Palm Mute velos') then
+    palm_mute_velos()
+  end
   rv, hard_velo_max = reaper.ImGui_InputInt(ctx, 'Hard Max Velocity', hard_velo_max)
   rv, hard_velo_min = reaper.ImGui_InputInt(ctx, 'Hard Min Velocity', hard_velo_min)
   rv, soff_velo_max = reaper.ImGui_InputInt(ctx, 'String Offset Max Velocity', soff_velo_max)
