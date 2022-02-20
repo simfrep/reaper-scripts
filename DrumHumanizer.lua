@@ -35,8 +35,8 @@ ppq = 960
 nudge = 12
 steps = 4
 downstroke = true
-vector = reaper.new_array({ 1.0,1.0,1.0,1.0 })
--- vec4 = { 1.0,1.0,1.0,1.0 }
+      -- Initialize pattern
+_vector = {}-- vec4 = { 1.0,1.0,1.0,1.0 }
 
 take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
 retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
@@ -136,10 +136,22 @@ end
 
 -- Define Content of ReaImgUi
 function frame()
+
+  for i = 1,steps do
+    _vector[i]=1
+  end
+  -- Convert to reaper.array
+  vector = reaper.new_array(_vector)
+  
   local rv
   reaper.ImGui_Text(ctx, 'Pattern Selection')
   reaper.ImGui_Text(ctx, 'Cycles through selected notes and assigns randomized velocity following alternating hard-soft patterns')
   if r.ImGui_BeginTabBar(ctx, 'MyTabBar', r.ImGui_TabBarFlags_None()) then
+    if r.ImGui_BeginTabItem(ctx, '1') then
+      reaper.ImGui_Text(ctx, 'One Hard')
+      generate_pattern({1})
+      r.ImGui_EndTabItem(ctx)
+    end
     if r.ImGui_BeginTabItem(ctx, '1-0') then
       reaper.ImGui_Text(ctx, 'One Hard, One Soft (Double Base, Tom rolls)')
       generate_pattern({1,1})
@@ -150,6 +162,12 @@ function frame()
       generate_pattern({1,1,1})
       r.ImGui_EndTabItem(ctx)
     end
+    if reaper.ImGui_BeginTabItem(ctx, '1-x-1') then
+      reaper.ImGui_Text(ctx, 'Hard, x-times Soft, Hard')
+      rv, x0 = reaper.ImGui_InputInt(ctx, 'Weak hits', x0)
+      generate_pattern({1,x0,1})
+      r.ImGui_EndTabItem(ctx)
+    end    
     if reaper.ImGui_BeginTabItem(ctx, '1-x') then
       reaper.ImGui_Text(ctx, 'Hard + x-times Soft (Steady cymbals)')
       rv, x0 = reaper.ImGui_InputInt(ctx, 'Weak hits', x0)
@@ -167,19 +185,19 @@ function frame()
       reaper.ImGui_Text(ctx, 'Create custom Hard-Soft pattern.')
       rv, steps = reaper.ImGui_InputInt(ctx, 'Pattern steps', steps)
 
-      -- Initialize pattern
-      _vector = {}
-      for i = 1,steps do
-        _vector[i]=1
-      end
-      -- Convert to reaper.array
-      vector = reaper.new_array(_vector)
+
+
 
       r.ImGui_InputDoubleN(ctx, 'Custom pattern', vector,nil,nil,'%.0f')
       generate_pattern(vector)
       r.ImGui_EndTabItem(ctx)
     end
 
+    if reaper.ImGui_Button(ctx, 'HUMANIZE!!!') then
+      reaper.ShowConsoleMsg(dump(pattern))
+      humanize(pattern,hard_velo_max,hard_velo_min,weak_velo_max,weak_velo_min)
+    end
+  
   
   
   reaper.ImGui_Text(ctx, '')
@@ -198,10 +216,6 @@ function frame()
   rv, weak_velo_min = reaper.ImGui_InputInt(ctx, 'Weak Min Velocity', weak_velo_min)
 
 
-  if reaper.ImGui_Button(ctx, 'HUMANIZE!!!') then
-    reaper.ShowConsoleMsg(dump(pattern))
-    humanize(pattern,hard_velo_max,hard_velo_min,weak_velo_max,weak_velo_min)
-  end
   r.ImGui_EndTabBar(ctx)
 end
 
