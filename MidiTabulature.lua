@@ -13,16 +13,6 @@ end
 ppqinit=960
 ppq = 960
 pitch_offset = 0
--- https://boostrobotics.eu/windows-key-codes/
-enter=13
-rightarrow = 39
-uparrow = 38
-leftarrow = 37
-downarrow= 40
-minus = 109
-plus = 107
-multiply = 106
-divide = 111
 isdotted=false
 istriplet=false
 printlog=true
@@ -36,7 +26,6 @@ take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive());
 retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
 
 --https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
-
 
 strings = {}
 strings[0] = { color = 0xff0000d9,  note = 40, fret='' } -- E -- 6 strings guitar
@@ -277,27 +266,35 @@ end
 function frame()
   local rv
   -- multiply - dotted note
-  if reaper.ImGui_IsKeyPressed(ctx, multiply) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadMultiply()) then
     dotted_note()
   end
 
   -- divide - triplet note
-  if reaper.ImGui_IsKeyPressed(ctx, divide) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadDivide()) then
     triplet_note()
   end
   -- plus minus doubles/halfs the note length
-  if reaper.ImGui_IsKeyPressed(ctx, plus) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadAdd()) then
     ppq = ppq*2
   end
-  if reaper.ImGui_IsKeyPressed(ctx, minus) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadSubtract()) then
     ppq = ppq/2
   end  
   -- Up down arrows to go through strings/channels
-  if reaper.ImGui_IsKeyPressed(ctx, uparrow) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_UpArrow()) then
+    if not(fret == nil) then 
+      enter_current_note(fret)
+      fret = nil
+    end
     channel =math.min(5,channel+1)
     focus_on = channel
   end
-  if reaper.ImGui_IsKeyPressed(ctx, downarrow) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_DownArrow()) then
+    if not(fret == nil) then 
+      enter_current_note(fret)
+      fret = nil
+    end
     channel =math.max(0,channel-1)
     focus_on = channel
   end
@@ -309,20 +306,21 @@ function frame()
   -- Get the current cursor position
   cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
   -- Move the cursor
-  if reaper.ImGui_IsKeyPressed(ctx, rightarrow) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_RightArrow()) then
     if not(fret == nil) then 
       enter_current_note(fret)
       fret = nil
     end
     projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos+ppq)
     reaper.SetEditCurPos(projTime, true, true)
-    focus_on=channel
-    
   end
-  if reaper.ImGui_IsKeyPressed(ctx, leftarrow) then
+  if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_LeftArrow()) then
+    if not(fret == nil) then 
+      enter_current_note(fret)
+      fret = nil
+    end
     projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos-ppq)
     reaper.SetEditCurPos(projTime, true, true)
-    focus_on=channel
   end
 
  
@@ -383,37 +381,18 @@ end
 
 
 function enter_current_note(fret)
-  reaper.ShowConsoleMsg(strings[focus_on].fret .. "\n")
-  reaper.ShowConsoleMsg(tostring(strings[focus_on].fret == '') .. "\n")
-  reaper.ShowConsoleMsg(tostring(not(strings[focus_on].fret == '')) .. "\n")
-
   pitch = strings[focus_on].note + fret + pitch_offset
-  reaper.ShowConsoleMsg("pitch: " .. pitch .. "\n")
-
   -- Set the velocity of the MIDI note (0 to 127)
   velocity = 100
-
   -- Set the length of the MIDI note in PPQ (one quarter note)
   ppqPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
   -- Convert PPQ to project seconds
   projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, ppqPos)
-
-  -- Display the result in the console
-  reaper.ShowConsoleMsg("PPQ position: " .. ppqPos .. "\n")
-  reaper.ShowConsoleMsg("Project seconds: " .. projTime .. "\n")
-
   -- Insert the MIDI note
-  reaper.ShowConsoleMsg("cursorPos: " .. cursorPos .. "\n")
-  reaper.ShowConsoleMsg("cursorPos+length: " .. cursorPos+ppq .. "\n")
-  reaper.ShowConsoleMsg("string focus_on: " .. focus_on .. "\n")
-  
   reaper.MIDI_InsertNote(take, false, false, cursorPos, cursorPos+ppq, focus_on, pitch, velocity, false )
-
   if palmmute then
     reaper.MIDI_InsertNote(take, false, false, cursorPos, cursorPos+ppq, 15, pmnote, velocity, false )
   end
-  projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos+ppq)
-  reaper.SetEditCurPos(projTime, true, true)
 end
 
 -- initalize ReaImGui
