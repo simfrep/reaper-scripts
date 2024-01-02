@@ -189,7 +189,7 @@ function gui()
   -- row_bg_color = 0x333333a6
   -- ImGui.TableSetBgColor(ctx, ImGui.TableBgTarget_RowBg0(), row_bg_color)
 
-  _, lookback_measures = reaper.ImGui_InputInt(ctx, 'Lookback', lookback_measures, 1)
+  
   play_state = reaper.GetPlayState()
   cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
   sz_factor = 16
@@ -197,56 +197,68 @@ function gui()
   lookback = lookback_measures * ppqinit * 4
   first_note = cursorPos - lookback
   max_ppq = first_note
+  if ImGui.CollapsingHeader(ctx, 'DebugInfo') then
+    reaper.ImGui_Text(ctx, ('Note Length: 1/%.1f'):format(ppqinit/ppq*4))
+    reaper.ImGui_Text(ctx, ('PPQ: %d'):format(ppq))
+    reaper.ImGui_Text(ctx, ('focus_on: %s'):format(focus_on))
+    reaper.ImGui_Text(ctx, ('isdotted: %s'):format(tostring(isdotted)))
+    reaper.ImGui_Text(ctx, ('istriplet: %s'):format(tostring(istriplet)))
+    reaper.ImGui_Text(ctx, ('palmmute: %s'):format(tostring(palmmute)))
+    reaper.ImGui_Text(ctx, ('MidiNotename: %s'):format(GetMIDINoteName(40,-1,false,false)))
+    reaper.ImGui_Text(ctx, ('cursorPos: %f'):format(cursorPos))
+    reaper.ImGui_Text(ctx, ('first_note: %f'):format(first_note))
+    reaper.ImGui_Text(ctx, ('max_ppq: %f'):format(max_ppq))
+  end
+  if ImGui.BeginTabBar(ctx, 'MyTabBar', ImGui.TabBarFlags_None()) then
+    if ImGui.BeginTabItem(ctx, 'Tabulature') then
 
-  reaper.ImGui_Text(ctx, ('Note Length: 1/%.1f'):format(ppqinit/ppq*4))
-  reaper.ImGui_Text(ctx, ('PPQ: %d'):format(ppq))
-  reaper.ImGui_Text(ctx, ('focus_on: %s'):format(focus_on))
-  reaper.ImGui_Text(ctx, ('isdotted: %s'):format(tostring(isdotted)))
-  reaper.ImGui_Text(ctx, ('istriplet: %s'):format(tostring(istriplet)))
-  reaper.ImGui_Text(ctx, ('palmmute: %s'):format(tostring(palmmute)))
-  reaper.ImGui_Text(ctx, ('MidiNotename: %s'):format(GetMIDINoteName(40,-1,false,false)))
-  reaper.ImGui_Text(ctx, ('cursorPos: %f'):format(cursorPos))
-  reaper.ImGui_Text(ctx, ('first_note: %f'):format(first_note))
-  reaper.ImGui_Text(ctx, ('max_ppq: %f'):format(max_ppq))
+      p = {ImGui.GetCursorScreenPos(ctx)}
+      take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
+      retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
+      ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
+      draw_list = ImGui.GetWindowDrawList(ctx)  
+      for j = 0, notes-1 do
+        retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
+        if startppqposOut > max_ppq then max_ppq = startppqposOut end
+        if chan <= 5 then 
+          strings[chan].fret = pitch - strings[chan].note
+          sz_x = ((endppqposOut - startppqposOut) / sz_factor)
+          x = (startppqposOut - first_note)/sz_factor + p[1]
+          y = p[2] + (5-chan)*sz_y
+          col = strings[chan].color   
+          ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(),3.0)
+          ImGui.DrawList_AddTextEx(draw_list, font,20,x+sz_x/4,y+sz_y/4,0xffffffff ,strings[chan].fret)
+        end
+      end
 
-  p = {ImGui.GetCursorScreenPos(ctx)}
-  take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
-  retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
-  ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
-  draw_list = ImGui.GetWindowDrawList(ctx)  
-  for j = 0, notes-1 do
-    retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
-    if startppqposOut > max_ppq then max_ppq = startppqposOut end
-    if chan <= 5 then 
-      strings[chan].fret = pitch - strings[chan].note
-      sz_x = ((endppqposOut - startppqposOut) / sz_factor)
-      x = (startppqposOut - first_note)/sz_factor + p[1]
-      y = p[2] + (5-chan)*sz_y
-      col = strings[chan].color   
-      ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(),3.0)
-      ImGui.DrawList_AddTextEx(draw_list, font,20,x+sz_x/4,y+sz_y/4,0xffffffff ,strings[chan].fret)
+      draw_grid_measures()
+      
+      p1_x = (cursorPos - first_note)/sz_factor + p[1]
+      p1_y = p[2]
+      p2_x = (cursorPos - first_note)/sz_factor + p[1]
+      p2_y = p[2] + 6*sz_y
+      col_rgba = 0xffffffff
+      ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 3.0)
+
+      -- Draw highlighting for cursor
+      if play_state == 0 then
+        col = 0xffffc0cb
+        x = (cursorPos - first_note)/sz_factor + p[1]
+        y = p[2] + (5-focus_on)*sz_y
+        sz_x = ((ppq) / sz_factor)
+
+        ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(),3.0)
+        ImGui.DrawList_AddTextEx(draw_list, font,20,x+sz_x/4,y+sz_y/4,0xffffffff ,fret)
+      end
+      ImGui.EndTabItem(ctx)
     end
+    if ImGui.BeginTabItem(ctx, 'Configuration') then
+      _, lookback_measures = reaper.ImGui_InputInt(ctx, 'Lookback', lookback_measures, 1)
+      ImGui.EndTabItem(ctx)
+    end
+    ImGui.EndTabBar(ctx)
   end
-
-  draw_grid_measures()
   
-  p1_x = (cursorPos - first_note)/sz_factor + p[1]
-  p1_y = p[2]
-  p2_x = (cursorPos - first_note)/sz_factor + p[1]
-  p2_y = p[2] + 6*sz_y
-  col_rgba = 0xffffffff
-  ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 3.0)
-
-  -- Draw highlighting for cursor
-  if play_state == 0 then
-    col = 0xffffc0cb
-    x = (cursorPos - first_note)/sz_factor + p[1]
-    y = p[2] + (5-focus_on)*sz_y
-    sz_x = ((ppq) / sz_factor)
-
-    ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(),3.0)
-    ImGui.DrawList_AddTextEx(draw_list, font,20,x+sz_x/4,y+sz_y/4,0xffffffff ,fret)
-  end
 end
 
 
@@ -303,10 +315,10 @@ function frame()
     if play_state == 0 then reaper.OnPlayButton() else reaper.OnStopButton() end
   end
 
-  -- Get the current cursor position
-  cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
   -- Move the cursor
   if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_RightArrow()) then
+    -- Get the current cursor position
+    cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
     if not(fret == nil) then 
       enter_current_note(fret)
       fret = nil
@@ -315,6 +327,8 @@ function frame()
     reaper.SetEditCurPos(projTime, true, true)
   end
   if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_LeftArrow()) then
+    -- Get the current cursor position
+    cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
     if not(fret == nil) then 
       enter_current_note(fret)
       fret = nil
@@ -338,10 +352,7 @@ function frame()
   now = os.time()
   for k,v in pairs(keypad) do 
     if reaper.ImGui_IsKeyPressed(ctx, k) then
-      delete_note()
-
-      
-
+      delete_note()     
       if timelastpressed == nil then
         fret = v
       else
@@ -351,7 +362,6 @@ function frame()
           fret = v
         end        
       end
-
       timelastpressed = now
     end
   end
@@ -393,6 +403,8 @@ function enter_current_note(fret)
   if palmmute then
     reaper.MIDI_InsertNote(take, false, false, cursorPos, cursorPos+ppq, 15, pmnote, velocity, false )
   end
+  -- reset value
+  timelastpressed=nil
 end
 
 -- initalize ReaImGui
