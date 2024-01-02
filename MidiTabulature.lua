@@ -353,18 +353,22 @@ function frame()
 	-- multiply - dotted note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadMultiply()) then
 		dotted_note()
+		modify_note()
 	end
 
 	-- divide - triplet note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadDivide()) then
 		triplet_note()
+		modify_note()
 	end
 	-- plus minus doubles/halfs the note length
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadAdd()) then
 		ppq = ppq * 2
+		modify_note()
 	end
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadSubtract()) then
 		ppq = ppq / 2
+		modify_note()
 	end
 	-- Up down arrows to go through strings/channels
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow()) then
@@ -460,6 +464,27 @@ function delete_note()
 		if (startppqposOut == cursorPos) and (chan == focus_on) then
 			reaper.MIDI_DeleteNote(take, j)
 		end
+	end
+end
+
+function modify_note()
+	take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+	-- Get the current cursor position
+	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+	pitch = nil
+	for j = 0, notes - 1 do
+		_, _, _, _startppqpos, _, _chan, _pitch, _ = reaper.MIDI_GetNote(take, j)
+
+		if (_startppqpos == cursorPos) and (_chan == focus_on) then
+			pitch = _pitch
+			reaper.MIDI_DeleteNote(take, j)
+		end
+	end
+
+	if not (pitch == nil) then
+		fret = pitch - strings[focus_on].note - pitch_offset
+		enter_current_note(fret)
 	end
 end
 
