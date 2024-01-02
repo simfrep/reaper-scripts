@@ -11,6 +11,9 @@ for name, func in pairs(reaper) do
 end
 window_flags = ImGui.WindowFlags_TopMost()
 
+tunings = {
+	strings = 6,
+}
 ppqinit = 960
 ppq = 960
 pitch_offset = 0
@@ -37,6 +40,9 @@ strings[2] = { color = 0x008000d9, note = 50, fret = "" } -- D
 strings[3] = { color = 0x0000ffd9, note = 55, fret = "" } -- G
 strings[4] = { color = 0x800080d9, note = 59, fret = "" } -- B
 strings[5] = { color = 0x4b139ad9, note = 64, fret = "" } -- E
+strings[6] = { color = 0xC50C4Cd9, note = 35 } -- B -- 7 strings guitar
+strings[7] = { color = 0x808000d9, note = 30 } -- F# -- 8 strings guitar
+strings[8] = { color = 0x6C4F00d9, note = 25 } -- C# -- 9 strings guitar
 
 keypad = {}
 keypad[ImGui.Key_Keypad0()] = 0
@@ -189,7 +195,7 @@ function draw_grid_measures()
 			p1_x = (ppqpos - first_note) / sz_factor + p[1] + offset
 			p1_y = p[2]
 			p2_x = (ppqpos - first_note) / sz_factor + p[1] + offset
-			p2_y = p[2] + 6 * sz_y
+			p2_y = p[2] + tunings.strings * sz_y
 
 			visible = true
 
@@ -246,16 +252,16 @@ function gui()
 		if ImGui.BeginTabItem(ctx, "Tabulature") then
 			p = { ImGui.GetCursorScreenPos(ctx) }
 			draw_list = ImGui.GetWindowDrawList(ctx)
-			for j = 0, 5 do
+			for j = 0, tunings.strings - 1 do
 				stringname = GetMIDINoteName(strings[j].note, -1, false, false)
 				x = p[1]
-				y = p[2] + (5 - j) * sz_y + sz_y / 4
+				y = p[2] + (tunings.strings - 1 - j) * sz_y + sz_y / 4
 				ImGui.DrawList_AddTextEx(draw_list, font, 20, x, y, 0xffffffff, stringname)
 			end
 			p1_x = p[1] + offset
 			p1_y = p[2]
 			p2_x = p[1] + offset
-			p2_y = p[2] + 6 * sz_y
+			p2_y = p[2] + tunings.strings * sz_y
 			col_rgba = 0x00ffffff
 			ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
 
@@ -268,11 +274,11 @@ function gui()
 				if startppqposOut > max_ppq then
 					max_ppq = startppqposOut
 				end
-				if chan <= 5 then
+				if chan <= tunings.strings - 1 then
 					strings[chan].fret = pitch - strings[chan].note
 					sz_x = ((endppqposOut - startppqposOut) / sz_factor)
 					x = (startppqposOut - first_note) / sz_factor + p[1] + offset
-					y = p[2] + (5 - chan) * sz_y
+					y = p[2] + (tunings.strings - 1 - chan) * sz_y
 					col = strings[chan].color
 
 					if x + sz_x > p[1] + offset then
@@ -308,7 +314,7 @@ function gui()
 			p1_x = (cursorPos - first_note) / sz_factor + p[1] + offset
 			p1_y = p[2]
 			p2_x = (cursorPos - first_note) / sz_factor + p[1] + offset
-			p2_y = p[2] + 6 * sz_y
+			p2_y = p[2] + tunings.strings * sz_y
 			col_rgba = 0xffffffff
 			ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 3.0)
 
@@ -316,7 +322,7 @@ function gui()
 			if play_state == 0 then
 				col = 0xffffc0cb
 				x = (cursorPos - first_note) / sz_factor + p[1] + offset
-				y = p[2] + (5 - focus_on) * sz_y
+				y = p[2] + (tunings.strings - 1 - focus_on) * sz_y
 				sz_x = (ppq / sz_factor)
 
 				ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(), 3.0)
@@ -325,10 +331,77 @@ function gui()
 			ImGui.EndTabItem(ctx)
 		end
 		if ImGui.BeginTabItem(ctx, "Configuration") then
-			_, lookback_measures = ImGui.InputInt(ctx, "Lookback", lookback_measures, 1)
+			configurationtab()
 			ImGui.EndTabItem(ctx)
 		end
 		ImGui.EndTabBar(ctx)
+	end
+end
+
+function set_std_tuning()
+	if tunings.strings <= 6 then
+		strings[0].note = 40
+		strings[1].note = 45
+		strings[2].note = 50
+		strings[3].note = 55
+		strings[4].note = 59
+		strings[5].note = 64
+	end
+	if tunings.strings == 7 then
+		strings[0].note = 35
+		strings[1].note = 40
+		strings[2].note = 45
+		strings[3].note = 50
+		strings[4].note = 55
+		strings[5].note = 59
+		strings[6].note = 64
+	end
+	if tunings.strings == 8 then
+		strings[0].note = 30
+		strings[1].note = 35
+		strings[2].note = 40
+		strings[3].note = 45
+		strings[4].note = 50
+		strings[5].note = 55
+		strings[6].note = 59
+		strings[7].note = 64
+	end
+	if tunings.strings == 9 then
+		strings[0].note = 25
+		strings[1].note = 30
+		strings[2].note = 35
+		strings[3].note = 40
+		strings[4].note = 45
+		strings[5].note = 50
+		strings[6].note = 55
+		strings[7].note = 59
+		strings[8].note = 64
+	end
+end
+
+function configurationtab()
+	_, lookback_measures = ImGui.InputInt(ctx, "Lookback", lookback_measures, 1)
+
+	ImGui.SeparatorText(ctx, "Tuning")
+
+	_, tunings.strings = ImGui.InputInt(ctx, "Visible Strings", tunings.strings, 1)
+	if tunings.strings < 4 then
+		tunings.strings = 4
+	end
+	if tunings.strings > 9 then
+		tunings.strings = 9
+	end
+	if ImGui.Button(ctx, "Standard") then
+		set_std_tuning()
+	end
+	ImGui.SameLine(ctx)
+	if ImGui.Button(ctx, "Drop") then
+		set_std_tuning()
+		strings[0].note = strings[0].note - 2
+	end
+	for i = 0, tunings.strings - 1 do
+		stringname = GetMIDINoteName(strings[i].note, -1, false, false)
+		_, strings[i].note = ImGui.InputInt(ctx, stringname, strings[i].note, 1)
 	end
 end
 
