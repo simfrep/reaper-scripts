@@ -24,6 +24,8 @@ palmmute = false
 pmnote = 15
 lookback_measures = 1
 timelastpressed = nil
+pitchmodified = nil
+modifiednotedeleted = nil
 offset = 25
 take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
 retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
@@ -450,7 +452,13 @@ function frame()
 			fret = nil
 		end
 	end
-	gui()
+
+	if not (pitchmodified == nil) and (modifiednotedeleted == 1) then
+		fret = pitchmodified - strings[focus_on].note - pitch_offset
+		enter_current_note(fret)
+		modifiednotedeleted = nil
+		fret = nil
+	end
 end
 
 function delete_note()
@@ -472,19 +480,16 @@ function modify_note()
 	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
 	-- Get the current cursor position
 	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
-	pitch = nil
 	for j = 0, notes - 1 do
 		_, _, _, _startppqpos, _, _chan, _pitch, _ = reaper.MIDI_GetNote(take, j)
 
 		if (_startppqpos == cursorPos) and (_chan == focus_on) then
-			pitch = _pitch
+			-- use this variable to reenter note on the next frame
+			modifiednotedeleted = 1
+			pitchmodified = _pitch
 			reaper.MIDI_DeleteNote(take, j)
+			break
 		end
-	end
-
-	if not (pitch == nil) then
-		fret = pitch - strings[focus_on].note - pitch_offset
-		enter_current_note(fret)
 	end
 end
 
