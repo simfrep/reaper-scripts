@@ -21,6 +21,7 @@ palmmute=false
 pmnote = 15
 lookback_measures = 1
 timelastpressed=nil
+offset=25
 take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
 retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
 
@@ -157,14 +158,18 @@ function draw_grid_measures()
       local beat_number = fullbeats_2 - fullbeats
       local measures_number = measures_2 - measures
 
-      p1_x = (ppqpos - first_note)/sz_factor + p[1]
+      p1_x = (ppqpos - first_note)/sz_factor + p[1]+offset
       p1_y = p[2]
-      p2_x = (ppqpos - first_note)/sz_factor + p[1]
+      p2_x = (ppqpos - first_note)/sz_factor + p[1]+offset
       p2_y = p[2] + 6*sz_y
+
+      p1_x = math.max(p1_x,p[1]+offset)
+      p2_x = math.max(p1_x,p[1]+offset)
       col_rgba = 0x00ffffff
 
       if istriplet then
         if ppqpos % (stepsize*3) == 0 then
+
           ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 2.0)
           ImGui.DrawList_AddTextEx(draw_list, font,20,p1_x,p1_y,0xffffffff ,measures+1)
         else
@@ -212,18 +217,26 @@ function gui()
     if ImGui.BeginTabItem(ctx, 'Tabulature') then
 
       p = {ImGui.GetCursorScreenPos(ctx)}
+      draw_list = ImGui.GetWindowDrawList(ctx)  
+      for j = 0, 5 do
+        stringname = GetMIDINoteName(strings[j].note,-1,false,false)
+        x=p[1]
+        y = p[2] + (5-j)*sz_y + sz_y/4
+        ImGui.DrawList_AddTextEx(draw_list, font,20,x,y,0xffffffff ,stringname)
+      end
+
       take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
       retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
       ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
-      draw_list = ImGui.GetWindowDrawList(ctx)  
+
       for j = 0, notes-1 do
         retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
         if startppqposOut > max_ppq then max_ppq = startppqposOut end
         if chan <= 5 then 
           strings[chan].fret = pitch - strings[chan].note
           sz_x = ((endppqposOut - startppqposOut) / sz_factor)
-          x = (startppqposOut - first_note)/sz_factor + p[1]
-          y = p[2] + (5-chan)*sz_y
+          x = (startppqposOut - first_note)/sz_factor + p[1]+offset
+          y = p[2] + (5-chan)*sz_y         
           col = strings[chan].color   
           ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(),3.0)
           ImGui.DrawList_AddTextEx(draw_list, font,20,x+sz_x/4,y+sz_y/4,0xffffffff ,strings[chan].fret)
@@ -232,9 +245,9 @@ function gui()
 
       draw_grid_measures()
       
-      p1_x = (cursorPos - first_note)/sz_factor + p[1]
+      p1_x = (cursorPos - first_note)/sz_factor + p[1]+offset
       p1_y = p[2]
-      p2_x = (cursorPos - first_note)/sz_factor + p[1]
+      p2_x = (cursorPos - first_note)/sz_factor + p[1]+offset
       p2_y = p[2] + 6*sz_y
       col_rgba = 0xffffffff
       ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 3.0)
@@ -242,7 +255,7 @@ function gui()
       -- Draw highlighting for cursor
       if play_state == 0 then
         col = 0xffffc0cb
-        x = (cursorPos - first_note)/sz_factor + p[1]
+        x = (cursorPos - first_note)/sz_factor + p[1]+offset
         y = p[2] + (5-focus_on)*sz_y
         sz_x = ((ppq) / sz_factor)
 
