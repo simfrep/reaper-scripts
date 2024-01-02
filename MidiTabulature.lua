@@ -196,23 +196,28 @@ function draw_grid_measures()
 			p2_x = (ppqpos - first_note) / sz_factor + p[1] + offset
 			p2_y = p[2] + 6 * sz_y
 
-			p1_x = math.max(p1_x, p[1] + offset)
-			p2_x = math.max(p1_x, p[1] + offset)
+			visible = true
+
+			if p2_x < p[1] + offset then
+				visible = false
+			end
 			col_rgba = 0x00ffffff
 
-			if istriplet then
-				if ppqpos % (stepsize * 3) == 0 then
-					ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
-					ImGui.DrawList_AddTextEx(draw_list, font, 20, p1_x, p1_y, 0xffffffff, measures + 1)
+			if visible then
+				if istriplet then
+					if ppqpos % (stepsize * 3) == 0 then
+						ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
+						ImGui.DrawList_AddTextEx(draw_list, font, 20, p1_x, p1_y, 0xffffffff, measures + 1)
+					else
+						ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 0.3)
+					end
 				else
-					ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 0.3)
-				end
-			else
-				if ppqpos % (stepsize * 4) == 0 then
-					ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
-					ImGui.DrawList_AddTextEx(draw_list, font, 20, p1_x, p1_y, 0xffffffff, measures + 1)
-				else
-					ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 0.3)
+					if ppqpos % (stepsize * 4) == 0 then
+						ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
+						ImGui.DrawList_AddTextEx(draw_list, font, 20, p1_x, p1_y, 0xffffffff, measures + 1)
+					else
+						ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 0.3)
+					end
 				end
 			end
 		end
@@ -252,6 +257,12 @@ function gui()
 				y = p[2] + (5 - j) * sz_y + sz_y / 4
 				ImGui.DrawList_AddTextEx(draw_list, font, 20, x, y, 0xffffffff, stringname)
 			end
+			p1_x = p[1] + offset
+			p1_y = p[2]
+			p2_x = p[1] + offset
+			p2_y = p[2] + 6 * sz_y
+			col_rgba = 0x00ffffff
+			ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
 
 			take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
 			retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
@@ -268,16 +279,32 @@ function gui()
 					x = (startppqposOut - first_note) / sz_factor + p[1] + offset
 					y = p[2] + (5 - chan) * sz_y
 					col = strings[chan].color
-					ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(), 3.0)
-					ImGui.DrawList_AddTextEx(
-						draw_list,
-						font,
-						20,
-						x + sz_x / 4,
-						y + sz_y / 4,
-						0xffffffff,
-						strings[chan].fret
-					)
+
+					if x + sz_x > p[1] + offset then
+						_x = math.max(x, p[1] + offset)
+						ImGui.DrawList_AddRect(
+							draw_list,
+							_x,
+							y,
+							x + sz_x,
+							y + sz_y,
+							col,
+							0.0,
+							ImGui.DrawFlags_None(),
+							3.0
+						)
+					end
+					if x + sz_x / 4 > p[1] + offset then
+						ImGui.DrawList_AddTextEx(
+							draw_list,
+							font,
+							20,
+							x + sz_x / 4,
+							y + sz_y / 4,
+							0xffffffff,
+							strings[chan].fret
+						)
+					end
 				end
 			end
 
