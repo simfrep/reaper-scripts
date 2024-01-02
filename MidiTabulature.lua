@@ -1,10 +1,9 @@
 local ctx = reaper.ImGui_CreateContext("Guitar Velocity Humanizer")
 local size = reaper.GetAppVersion():match("OSX") and 12 or 14
---local font = reaper.ImGui_CreateFont('sans-serif', size)
---reaper.ImGui_AttachFont(ctx, font)
+--local font = ImGui.CreateFont('sans-serif', size)
+--ImGui.AttachFont(ctx, font)
 
 widgets = {}
-window_flags = reaper.ImGui_WindowFlags_TopMost()
 local ImGui = {}
 for name, func in pairs(reaper) do
 	name = name:match("^ImGui_(.+)$")
@@ -12,6 +11,8 @@ for name, func in pairs(reaper) do
 		ImGui[name] = func
 	end
 end
+window_flags = ImGui.WindowFlags_TopMost()
+
 ppqinit = 960
 ppq = 960
 pitch_offset = 0
@@ -38,26 +39,26 @@ strings[4] = { color = 0x800080d9, note = 59, fret = "" } -- B
 strings[5] = { color = 0x4b139ad9, note = 64, fret = "" } -- E
 
 keypad = {}
-keypad[reaper.ImGui_Key_Keypad0()] = 0
-keypad[reaper.ImGui_Key_Keypad1()] = 1
-keypad[reaper.ImGui_Key_Keypad2()] = 2
-keypad[reaper.ImGui_Key_Keypad3()] = 3
-keypad[reaper.ImGui_Key_Keypad4()] = 4
-keypad[reaper.ImGui_Key_Keypad5()] = 5
-keypad[reaper.ImGui_Key_Keypad6()] = 6
-keypad[reaper.ImGui_Key_Keypad7()] = 7
-keypad[reaper.ImGui_Key_Keypad8()] = 8
-keypad[reaper.ImGui_Key_Keypad9()] = 9
-keypad[reaper.ImGui_Key_0()] = 0
-keypad[reaper.ImGui_Key_1()] = 1
-keypad[reaper.ImGui_Key_2()] = 2
-keypad[reaper.ImGui_Key_3()] = 3
-keypad[reaper.ImGui_Key_4()] = 4
-keypad[reaper.ImGui_Key_5()] = 5
-keypad[reaper.ImGui_Key_6()] = 6
-keypad[reaper.ImGui_Key_7()] = 7
-keypad[reaper.ImGui_Key_8()] = 8
-keypad[reaper.ImGui_Key_9()] = 9
+keypad[ImGui.Key_Keypad0()] = 0
+keypad[ImGui.Key_Keypad1()] = 1
+keypad[ImGui.Key_Keypad2()] = 2
+keypad[ImGui.Key_Keypad3()] = 3
+keypad[ImGui.Key_Keypad4()] = 4
+keypad[ImGui.Key_Keypad5()] = 5
+keypad[ImGui.Key_Keypad6()] = 6
+keypad[ImGui.Key_Keypad7()] = 7
+keypad[ImGui.Key_Keypad8()] = 8
+keypad[ImGui.Key_Keypad9()] = 9
+keypad[ImGui.Key_0()] = 0
+keypad[ImGui.Key_1()] = 1
+keypad[ImGui.Key_2()] = 2
+keypad[ImGui.Key_3()] = 3
+keypad[ImGui.Key_4()] = 4
+keypad[ImGui.Key_5()] = 5
+keypad[ImGui.Key_6()] = 6
+keypad[ImGui.Key_7()] = 7
+keypad[ImGui.Key_8()] = 8
+keypad[ImGui.Key_9()] = 9
 
 -- Get MIDI Note name from a MIDI row.
 -- credit: X-Raym_ReaTab Hero.lua. line 511
@@ -170,8 +171,8 @@ function triplet_note()
 end
 
 function HSV(h, s, v, a)
-	local r, g, b = reaper.ImGui_ColorConvertHSVtoRGB(h, s, v)
-	return reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a or 1.0)
+	local r, g, b = ImGui.ColorConvertHSVtoRGB(h, s, v)
+	return ImGui.ColorConvertDouble4ToU32(r, g, b, a or 1.0)
 end
 
 function draw_grid_measures()
@@ -230,16 +231,16 @@ function gui()
 	first_note = cursorPos - lookback
 	max_ppq = first_note
 	if ImGui.CollapsingHeader(ctx, "DebugInfo") then
-		reaper.ImGui_Text(ctx, ("Note Length: 1/%.1f"):format(ppqinit / ppq * 4))
-		reaper.ImGui_Text(ctx, ("PPQ: %d"):format(ppq))
-		reaper.ImGui_Text(ctx, ("focus_on: %s"):format(focus_on))
-		reaper.ImGui_Text(ctx, ("isdotted: %s"):format(tostring(isdotted)))
-		reaper.ImGui_Text(ctx, ("istriplet: %s"):format(tostring(istriplet)))
-		reaper.ImGui_Text(ctx, ("palmmute: %s"):format(tostring(palmmute)))
-		reaper.ImGui_Text(ctx, ("MidiNotename: %s"):format(GetMIDINoteName(40, -1, false, false)))
-		reaper.ImGui_Text(ctx, ("cursorPos: %f"):format(cursorPos))
-		reaper.ImGui_Text(ctx, ("first_note: %f"):format(first_note))
-		reaper.ImGui_Text(ctx, ("max_ppq: %f"):format(max_ppq))
+		ImGui.Text(ctx, ("Note Length: 1/%.1f"):format(ppqinit / ppq * 4))
+		ImGui.Text(ctx, ("PPQ: %d"):format(ppq))
+		ImGui.Text(ctx, ("focus_on: %s"):format(focus_on))
+		ImGui.Text(ctx, ("isdotted: %s"):format(tostring(isdotted)))
+		ImGui.Text(ctx, ("istriplet: %s"):format(tostring(istriplet)))
+		ImGui.Text(ctx, ("palmmute: %s"):format(tostring(palmmute)))
+		ImGui.Text(ctx, ("MidiNotename: %s"):format(GetMIDINoteName(40, -1, false, false)))
+		ImGui.Text(ctx, ("cursorPos: %f"):format(cursorPos))
+		ImGui.Text(ctx, ("first_note: %f"):format(first_note))
+		ImGui.Text(ctx, ("max_ppq: %f"):format(max_ppq))
 	end
 	if ImGui.BeginTabBar(ctx, "MyTabBar", ImGui.TabBarFlags_None()) then
 		if ImGui.BeginTabItem(ctx, "Tabulature") then
@@ -302,7 +303,7 @@ function gui()
 			ImGui.EndTabItem(ctx)
 		end
 		if ImGui.BeginTabItem(ctx, "Configuration") then
-			_, lookback_measures = reaper.ImGui_InputInt(ctx, "Lookback", lookback_measures, 1)
+			_, lookback_measures = ImGui.InputInt(ctx, "Lookback", lookback_measures, 1)
 			ImGui.EndTabItem(ctx)
 		end
 		ImGui.EndTabBar(ctx)
@@ -323,30 +324,30 @@ end
 function frame()
 	local rv
 	-- multiply - dotted note
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadMultiply()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadMultiply()) then
 		dotted_note()
 	end
 
 	-- divide - triplet note
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadDivide()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadDivide()) then
 		triplet_note()
 	end
 	-- plus minus doubles/halfs the note length
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadAdd()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadAdd()) then
 		ppq = ppq * 2
 	end
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_KeypadSubtract()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadSubtract()) then
 		ppq = ppq / 2
 	end
 	-- Up down arrows to go through strings/channels
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_UpArrow()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow()) then
 		if not (fret == nil) then
 			enter_current_note(fret)
 			fret = nil
 		end
 		focus_on = math.min(5, focus_on + 1)
 	end
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_DownArrow()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow()) then
 		if not (fret == nil) then
 			enter_current_note(fret)
 			fret = nil
@@ -354,7 +355,7 @@ function frame()
 		focus_on = math.max(0, focus_on - 1)
 	end
 
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Space()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_Space()) then
 		if play_state == 0 then
 			reaper.OnPlayButton()
 		else
@@ -363,7 +364,7 @@ function frame()
 	end
 
 	-- Move the cursor
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_RightArrow()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_RightArrow()) then
 		-- Get the current cursor position
 		cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
 		if not (fret == nil) then
@@ -373,7 +374,7 @@ function frame()
 		projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos + ppq)
 		reaper.SetEditCurPos(projTime, true, true)
 	end
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_LeftArrow()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_LeftArrow()) then
 		-- Get the current cursor position
 		cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
 		if not (fret == nil) then
@@ -385,19 +386,19 @@ function frame()
 	end
 
 	-- Delete note
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Delete()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_Delete()) then
 		delete_note()
 	end
 
 	-- Palm Multe note
-	if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_P()) then
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_P()) then
 		palmmute = true
 	end
 	-- for key in
 
 	now = os.time()
 	for k, v in pairs(keypad) do
-		if reaper.ImGui_IsKeyPressed(ctx, k) then
+		if ImGui.IsKeyPressed(ctx, k) then
 			delete_note()
 			if timelastpressed == nil then
 				fret = v
@@ -454,19 +455,19 @@ end
 
 -- initalize ReaImGui
 function loop()
-	reaper.ImGui_PushFont(ctx, font)
-	reaper.ImGui_SetNextWindowSize(ctx, 400, 80, reaper.ImGui_Cond_FirstUseEver())
-	local visible, open = reaper.ImGui_Begin(ctx, "MidiTabulature", true, window_flags)
+	ImGui.PushFont(ctx, font)
+	ImGui.SetNextWindowSize(ctx, 400, 80, ImGui.Cond_FirstUseEver())
+	local visible, open = ImGui.Begin(ctx, "MidiTabulature", true, window_flags)
 	if visible then
 		frame()
-		reaper.ImGui_End(ctx)
+		ImGui.End(ctx)
 	end
-	reaper.ImGui_PopFont(ctx)
+	ImGui.PopFont(ctx)
 
 	if open then
 		reaper.defer(loop)
 	else
-		reaper.ImGui_DestroyContext(ctx)
+		ImGui.DestroyContext(ctx)
 	end
 end
 
