@@ -158,7 +158,9 @@ end
 function draw_grid_measures()
   
   if istriplet then stepsize=1280 else stepsize=ppqinit end
-  for ppqpos=first_note, (max_ppq+40*ppqinit),(stepsize/4) do
+
+  next_beat = cursorPos - (cursorPos % stepsize) - stepsize*4
+  for ppqpos=next_beat, (max_ppq+40*ppqinit),(stepsize/4) do
     if ppqpos % (stepsize) == 0 then
 
       time = reaper.MIDI_GetProjTimeFromPPQPos(take, ppqpos)
@@ -166,8 +168,6 @@ function draw_grid_measures()
       local retval_2, measures_2, cml_2, fullbeats_2, cdenom_2 = reaper.TimeMap2_timeToBeats(0, time + 5) --NOTE: 10 is arbirary, but needed because offset (all_measure_length) is calculated at each new measure (and it can change).
       local beat_number = fullbeats_2 - fullbeats
       local measures_number = measures_2 - measures
-
-
 
       p1_x = (ppqpos - first_note)/sz_factor + p[1]
       p1_y = p[2]
@@ -206,7 +206,7 @@ function gui()
   sz_factor = 16
   sz_y = 36
   lookback = lookback_measures * ppqinit * 4
-  first_note = cursorPos - lookback - (cursorPos%ppqinit )
+  first_note = cursorPos - lookback
   max_ppq = first_note
 
   reaper.ImGui_Text(ctx, ('Note Length: 1/%.1f'):format(ppqinit/ppq*4))
