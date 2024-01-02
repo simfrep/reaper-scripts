@@ -1,7 +1,5 @@
-local ctx = reaper.ImGui_CreateContext("Guitar Velocity Humanizer")
+local ctx = reaper.ImGui_CreateContext("MidiTabulature")
 local size = reaper.GetAppVersion():match("OSX") and 12 or 14
---local font = ImGui.CreateFont('sans-serif', size)
---ImGui.AttachFont(ctx, font)
 
 widgets = {}
 local ImGui = {}
@@ -16,11 +14,14 @@ window_flags = ImGui.WindowFlags_TopMost()
 ppqinit = 960
 ppq = 960
 pitch_offset = 0
+
 isdotted = false
 istriplet = false
 printlog = true
-focus_on = 0
 palmmute = false
+
+focus_on = 0
+
 pmnote = 15
 lookback_measures = 1
 timelastpressed = nil
@@ -28,9 +29,6 @@ pitchmodified = nil
 modifiednotedeleted = nil
 offset = 25
 take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
-retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
-
---https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
 
 strings = {}
 strings[0] = { color = 0xff0000d9, note = 40, fret = "" } -- E -- 6 strings guitar
@@ -170,11 +168,6 @@ function triplet_note()
 		ppq = ppq * 4 / 3
 		istriplet = true
 	end
-end
-
-function HSV(h, s, v, a)
-	local r, g, b = ImGui.ColorConvertHSVtoRGB(h, s, v)
-	return ImGui.ColorConvertDouble4ToU32(r, g, b, a or 1.0)
 end
 
 function draw_grid_measures()
@@ -349,9 +342,7 @@ function GetPlayOrEditCursorPos()
 	return cursor_pos
 end
 
--- Define Content of ReaImgUi
-function frame()
-	local rv
+function keyboard_events()
 	-- multiply - dotted note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadMultiply()) then
 		dotted_note()
@@ -427,7 +418,14 @@ function frame()
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_P()) then
 		palmmute = true
 	end
-	-- for key in
+	-- Enter
+	if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter())) or (ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter())) then
+		timelastpressed = nil
+		if not (fret == nil) then
+			enter_current_note(fret)
+			fret = nil
+		end
+	end
 
 	now = os.time()
 	for k, v in pairs(keypad) do
@@ -516,7 +514,8 @@ function loop()
 	ImGui.SetNextWindowSize(ctx, 400, 80, ImGui.Cond_FirstUseEver())
 	local visible, open = ImGui.Begin(ctx, "MidiTabulature", true, window_flags)
 	if visible then
-		frame()
+		keyboard_events()
+		gui()
 		ImGui.End(ctx)
 	end
 	ImGui.PopFont(ctx)
