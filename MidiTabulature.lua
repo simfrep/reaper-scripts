@@ -142,14 +142,13 @@ end
 
 function triplet_note()
   if istriplet then 
-    ppq = ppq*3/2
+    ppq = ppq*3/4
     istriplet=false 
   else 
-    ppq=ppq*2/3
+    ppq=ppq*4/3
     istriplet=true  
   end
 end
-
 
 function HSV(h, s, v, a)
   local r, g, b = reaper.ImGui_ColorConvertHSVtoRGB(h, s, v)
@@ -158,10 +157,9 @@ end
 
 function draw_grid_measures()
   
-  for ppqpos=first_note, (max_ppq+40*ppqinit),ppqinit do
-
-
-    if ppqpos % (ppqinit) == 0 then
+  if istriplet then stepsize=1280 else stepsize=ppqinit end
+  for ppqpos=first_note, (max_ppq+40*ppqinit),(stepsize/4) do
+    if ppqpos % (stepsize) == 0 then
 
       time = reaper.MIDI_GetProjTimeFromPPQPos(take, ppqpos)
       local retval, measures, cml, fullbeats, cdenom = reaper.TimeMap2_timeToBeats(0, time)
@@ -169,15 +167,7 @@ function draw_grid_measures()
       local beat_number = fullbeats_2 - fullbeats
       local measures_number = measures_2 - measures
 
-      if printlog then
-        reaper.ShowConsoleMsg('first_note: ' .. first_note..'\n')
-        reaper.ShowConsoleMsg('ppqpos: ' .. ppqpos..'\n'..'\n')
-        reaper.ShowConsoleMsg('measures: ' .. measures..'\n'..'\n')
-        reaper.ShowConsoleMsg('fullbeats: ' .. fullbeats..'\n'..'\n')
-        reaper.ShowConsoleMsg('measures_2: ' .. measures_2..'\n'..'\n')
-        reaper.ShowConsoleMsg('fullbeats_2: ' .. fullbeats_2..'\n'..'\n')
-        reaper.ShowConsoleMsg('measures_number: ' .. measures_number..'\n'..'\n')
-      end
+
 
       p1_x = (ppqpos - first_note)/sz_factor + p[1]
       p1_y = p[2]
@@ -185,16 +175,24 @@ function draw_grid_measures()
       p2_y = p[2] + 6*sz_y
       col_rgba = 0x00ffffff
 
-      if ppqpos % (ppqinit*4) == 0 then
-        ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 3.0)
-        ImGui.DrawList_AddTextEx(draw_list, font,20,p1_x,p1_y,0xffffffff ,measures+1)
+      if istriplet then
+        if ppqpos % (stepsize*3) == 0 then
+          ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 2.0)
+          ImGui.DrawList_AddTextEx(draw_list, font,20,p1_x,p1_y,0xffffffff ,measures+1)
+        else
+          ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 0.3)
+        end
       else
-        ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 0.3)
-
+        if ppqpos % (stepsize*4) == 0 then
+          ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 2.0)
+          ImGui.DrawList_AddTextEx(draw_list, font,20,p1_x,p1_y,0xffffffff ,measures+1)
+        else
+          ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 0.3)
+        end
       end
     end
   end
-  printlog=false
+  
 end
 
 
@@ -205,6 +203,11 @@ function gui()
   _, lookback_measures = reaper.ImGui_InputInt(ctx, 'Lookback', lookback_measures, 1)
   play_state = reaper.GetPlayState()
   cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
+  sz_factor = 16
+  sz_y = 36
+  lookback = lookback_measures * ppqinit * 4
+  first_note = cursorPos - lookback - (cursorPos%ppqinit )
+  max_ppq = first_note
 
   reaper.ImGui_Text(ctx, ('Note Length: 1/%.1f'):format(ppqinit/ppq*4))
   reaper.ImGui_Text(ctx, ('PPQ: %d'):format(ppq))
@@ -214,60 +217,20 @@ function gui()
   reaper.ImGui_Text(ctx, ('palmmute: %s'):format(tostring(palmmute)))
   reaper.ImGui_Text(ctx, ('MidiNotename: %s'):format(GetMIDINoteName(40,-1,false,false)))
   reaper.ImGui_Text(ctx, ('cursorPos: %f'):format(cursorPos))
+  reaper.ImGui_Text(ctx, ('first_note: %f'):format(first_note))
+  reaper.ImGui_Text(ctx, ('max_ppq: %f'):format(max_ppq))
 
-  ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
-  draw_list = ImGui.GetWindowDrawList(ctx)
-
-
-
-
-  
   p = {ImGui.GetCursorScreenPos(ctx)}
-  sz_factor = 16
-  sz_y = 36
-  lookback = lookback_measures * ppqinit * 4
-  -- cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
-  
-  -- reaper.ShowConsoleMsg('play_state' .. play_state)
-  
-
-  -- if printlog then
-  --   _cpos = GetPlayOrEditCursorPos()
-  --   reaper.ShowConsoleMsg(_cpos ..'\n'.. '\n')
-    
-  --   local retval, measures, cml, fullbeats, cdenom = reaper.TimeMap2_timeToBeats(0, GetPlayOrEditCursorPos())
-  --   local retval_2, measures_2, cml_2, fullbeats_2, cdenom_2 = reaper.TimeMap2_timeToBeats(0, GetPlayOrEditCursorPos() + 5) --NOTE: 10 is arbirary, but needed because offset (all_measure_length) is calculated at each new measure (and it can change).
-  --   local beat_number = fullbeats_2 - fullbeats
-  --   local measures_number = measures_2 - measures
-  --   reaper.ShowConsoleMsg(retval ..'\n'.. measures ..'\n'.. cml ..'\n'.. fullbeats ..'\n'.. cdenom..'\n'..'\n')
-  --   reaper.ShowConsoleMsg(retval_2 ..'\n'.. measures_2 ..'\n'.. cml_2 ..'\n'.. fullbeats_2 ..'\n'.. cdenom_2..'\n'..'\n')
-  --   reaper.ShowConsoleMsg(beat_number ..'\n'.. measures_number..'\n'..'\n')
-
-  --   printlog=false
-  -- end
-
-
-
-  first_note = cursorPos - lookback - (cursorPos%ppqinit )
-
-
-  
- 
-  
   take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive()); 
   retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take);
-  -- Get the current cursor position
-  -- cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
-  max_ppq = first_note
+  ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
+  draw_list = ImGui.GetWindowDrawList(ctx)  
   for j = 0, notes-1 do
     retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
-
     if startppqposOut > max_ppq then max_ppq = startppqposOut end
-
     if chan <= 5 then 
       strings[chan].fret = pitch - strings[chan].note
       sz_x = ((endppqposOut - startppqposOut) / sz_factor)
-      
       x = (startppqposOut - first_note)/sz_factor + p[1]
       y = p[2] + (5-chan)*sz_y
       col = strings[chan].color   
@@ -283,7 +246,7 @@ function gui()
   p2_x = (cursorPos - first_note)/sz_factor + p[1]
   p2_y = p[2] + 6*sz_y
   col_rgba = 0xffffffff
-  ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 1.0)
+  ImGui.DrawList_AddLine(draw_list, p1_x, p1_y ,  p2_x,  p2_y, col_rgba, 3.0)
 
   -- Draw highlighting for cursor
   if play_state == 0 then
