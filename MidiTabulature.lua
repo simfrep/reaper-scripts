@@ -166,6 +166,13 @@ function dotted_note()
 	end
 end
 
+function palmmute_note()
+	if palmmute then
+		palmmute = false
+	else
+		palmmute = true
+	end
+end
 function triplet_note()
 	if istriplet then
 		ppq = ppq * 3 / 4
@@ -231,7 +238,7 @@ function gui()
 
 	play_state = reaper.GetPlayState()
 	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
-	sz_factor = 16
+	sz_factor = 8
 	sz_y = 36
 	lookback = lookback_measures * ppqinit * 4
 	first_note = cursorPos - lookback
@@ -399,6 +406,12 @@ function configurationtab()
 		set_std_tuning()
 		strings[0].note = strings[0].note - 2
 	end
+	ImGui.SameLine(ctx)
+	if ImGui.Button(ctx, "Drums") then
+		for i = 0, tunings.strings - 1 do
+			strings[i].note = 0
+		end
+	end
 	for i = 0, tunings.strings - 1 do
 		stringname = GetMIDINoteName(strings[i].note, -1, false, false)
 		_, strings[i].note = ImGui.InputInt(ctx, stringname, strings[i].note, 1)
@@ -489,7 +502,8 @@ function keyboard_events()
 
 	-- Palm Multe note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_P()) then
-		palmmute = true
+		palmmute_note()
+		modify_note()
 	end
 	-- Enter
 	if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter())) or (ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter())) then
