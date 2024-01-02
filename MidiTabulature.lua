@@ -16,7 +16,6 @@ pitch_offset = 0
 isdotted=false
 istriplet=false
 printlog=true
-channel = 0
 focus_on = 0
 palmmute=false
 pmnote = 15
@@ -299,16 +298,14 @@ function frame()
       enter_current_note(fret)
       fret = nil
     end
-    channel =math.min(5,channel+1)
-    focus_on = channel
+    focus_on = math.min(5,focus_on+1)
   end
   if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_DownArrow()) then
     if not(fret == nil) then 
       enter_current_note(fret)
       fret = nil
     end
-    channel =math.max(0,channel-1)
-    focus_on = channel
+    focus_on = math.max(0,focus_on-1)
   end
 
   if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Space()) then
