@@ -24,7 +24,7 @@ printlog = true
 palmmute = false
 
 focus_on = 0
-
+max_ppq_end = nil
 pmnote = 15
 lookback_measures = 1
 timelastpressed = nil
@@ -243,6 +243,7 @@ function gui()
 	lookback = lookback_measures * ppqinit * 4
 	first_note = cursorPos - lookback
 	max_ppq = first_note
+	max_ppq_end = first_note
 	if ImGui.CollapsingHeader(ctx, "DebugInfo") then
 		ImGui.Text(ctx, ("Note Length: 1/%.1f"):format(ppqinit / ppq * 4))
 		ImGui.Text(ctx, ("PPQ: %d"):format(ppq))
@@ -280,6 +281,9 @@ function gui()
 				retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
 				if startppqposOut > max_ppq then
 					max_ppq = startppqposOut
+				end
+				if endppqposOut > max_ppq_end then
+					max_ppq_end = endppqposOut
 				end
 				if chan <= tunings.strings - 1 then
 					strings[chan].fret = pitch - strings[chan].note
@@ -505,6 +509,11 @@ function keyboard_events()
 		palmmute_note()
 		modify_note()
 	end
+
+	if ImGui.IsKeyPressed(ctx, ImGui.Key_C()) then
+		copy_notes()
+	end
+
 	-- Enter
 	if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter())) or (ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter())) then
 		timelastpressed = nil
@@ -576,6 +585,32 @@ function modify_note()
 			break
 		end
 	end
+end
+
+function copy_notes()
+	take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+	-- Get the current cursor position
+	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+	for j = 0, notes - 1 do
+		_, _, _, _startppqpos, _endppqpos, _chan, _pitch, _velo = reaper.MIDI_GetNote(take, j)
+
+		if _startppqpos == cursorPos then
+			reaper.MIDI_InsertNote(
+				take,
+				false,
+				false,
+				max_ppq_end,
+				max_ppq_end + _endppqpos - _startppqpos,
+				_chan,
+				_pitch,
+				_velo,
+				false
+			)
+		end
+	end
+	projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos + _endppqpos - _startppqpos)
+	reaper.SetEditCurPos(projTime, true, true)
 end
 
 function enter_current_note(fret)
