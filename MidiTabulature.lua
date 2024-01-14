@@ -22,6 +22,10 @@ isdotted = false
 istriplet = false
 printlog = true
 palmmute = false
+tracknames = {}
+takes = {}
+current_take = nil
+current_track = nil
 
 focus_on = 0
 max_ppq_end = nil
@@ -183,7 +187,7 @@ function triplet_note()
 	end
 end
 
-function draw_grid_measures()
+function draw_grid_measures(n)
 	if istriplet then
 		stepsize = 1280
 	else
@@ -200,9 +204,9 @@ function draw_grid_measures()
 			local measures_number = measures_2 - measures
 
 			p1_x = (ppqpos - first_note) / sz_factor + p[1] + offset
-			p1_y = p[2]
+			p1_y = p[2] + (n - 1) * (sz_y * tunings.strings + offset)
 			p2_x = (ppqpos - first_note) / sz_factor + p[1] + offset
-			p2_y = p[2] + tunings.strings * sz_y
+			p2_y = p[2] + tunings.strings * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
 
 			visible = true
 
@@ -233,9 +237,6 @@ function draw_grid_measures()
 end
 
 function gui()
-	-- row_bg_color = 0x333333a6
-	-- ImGui.TableSetBgColor(ctx, ImGui.TableBgTarget_RowBg0(), row_bg_color)
-
 	play_state = reaper.GetPlayState()
 	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
 	sz_factor = 8
@@ -258,86 +259,128 @@ function gui()
 	end
 	if ImGui.BeginTabBar(ctx, "MyTabBar", ImGui.TabBarFlags_None()) then
 		if ImGui.BeginTabItem(ctx, "Tabulature") then
+			if ImGui.BeginListBox(ctx, "listbox 1") then
+				for n, v in ipairs(tracknames) do
+					local is_selected = current_track == n
+					if ImGui.Selectable(ctx, v, is_selected) then
+						current_track = n
+						current_trackname = v
+						current_take = takes[v]
+					end
+
+					-- Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+					if is_selected then
+						trackname = v
+						take = takes[trackname]
+						ImGui.SetItemDefaultFocus(ctx)
+					end
+				end
+				ImGui.EndListBox(ctx)
+			end
+
 			p = { ImGui.GetCursorScreenPos(ctx) }
 			draw_list = ImGui.GetWindowDrawList(ctx)
-			for j = 0, tunings.strings - 1 do
-				stringname = GetMIDINoteName(strings[j].note, -1, false, false)
-				x = p[1]
-				y = p[2] + (tunings.strings - 1 - j) * sz_y + sz_y / 4
-				ImGui.DrawList_AddTextEx(draw_list, font, 20, x, y, 0xffffffff, stringname)
-			end
-			p1_x = p[1] + offset
-			p1_y = p[2]
-			p2_x = p[1] + offset
-			p2_y = p[2] + tunings.strings * sz_y
-			col_rgba = 0x00ffffff
-			ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
 
-			take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
-			retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
-			ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
+			for n, v in ipairs(tracknames) do
+				-- draw string tunings
+				for j = 0, tunings.strings - 1 do
+					stringname = GetMIDINoteName(strings[j].note, -1, false, false)
+					x = p[1]
+					y = p[2] + (tunings.strings - 1 - j) * sz_y + sz_y / 4 + (n - 1) * (sz_y * tunings.strings + offset)
+					ImGui.DrawList_AddTextEx(draw_list, font, 20, x, y, 0xffffffff, stringname)
+					-- draw separator
+					p1_x = p[1] + offset
+					p1_y = p[2] + (n - 1) * (sz_y * tunings.strings + offset)
 
-			for j = 0, notes - 1 do
-				retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
-				if startppqposOut > max_ppq then
-					max_ppq = startppqposOut
+					p2_x = p[1] + offset
+					p2_y = p[2] + tunings.strings * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
+
+					col_rgba = 0x00ffffff
+					ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
 				end
-				if endppqposOut > max_ppq_end then
-					max_ppq_end = endppqposOut
-				end
-				if chan <= tunings.strings - 1 then
-					strings[chan].fret = pitch - strings[chan].note
-					sz_x = ((endppqposOut - startppqposOut) / sz_factor)
-					x = (startppqposOut - first_note) / sz_factor + p[1] + offset
-					y = p[2] + (tunings.strings - 1 - chan) * sz_y
-					col = strings[chan].color
+				trackname = v
+				take = takes[trackname]
+				--take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+				retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+				ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
 
-					if x + sz_x > p[1] + offset then
-						_x = math.max(x, p[1] + offset)
-						ImGui.DrawList_AddRect(
-							draw_list,
-							_x,
-							y,
-							x + sz_x,
-							y + sz_y,
-							col,
-							0.0,
-							ImGui.DrawFlags_None(),
-							3.0
-						)
+				for j = 0, notes - 1 do
+					retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
+					if startppqposOut > max_ppq then
+						max_ppq = startppqposOut
 					end
-					if x + sz_x / 4 > p[1] + offset then
-						ImGui.DrawList_AddTextEx(
-							draw_list,
-							font,
-							20,
-							x + sz_x / 4,
-							y + sz_y / 4,
-							0xffffffff,
-							strings[chan].fret
-						)
+					if endppqposOut > max_ppq_end then
+						max_ppq_end = endppqposOut
 					end
+					if chan <= tunings.strings - 1 then
+						strings[chan].fret = pitch - strings[chan].note
+						sz_x = ((endppqposOut - startppqposOut) / sz_factor)
+						x = (startppqposOut - first_note) / sz_factor + p[1] + offset
+						y = p[2] + (tunings.strings - 1 - chan) * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
+
+						col = strings[chan].color
+
+						if x + sz_x > p[1] + offset then
+							_x = math.max(x, p[1] + offset)
+							ImGui.DrawList_AddRectFilled(
+								draw_list,
+								_x,
+								y,
+								x + sz_x,
+								y + sz_y,
+								col,
+								0.0,
+								ImGui.DrawFlags_None()
+							)
+							ImGui.DrawList_AddRect(
+								draw_list,
+								_x,
+								y,
+								x + sz_x,
+								y + sz_y,
+								0xffffffff,
+								0.0,
+								ImGui.DrawFlags_None(),
+								1.0
+							)
+						end
+						if x + sz_x / 4 > p[1] + offset then
+							ImGui.DrawList_AddTextEx(
+								draw_list,
+								font,
+								20,
+								x + sz_x / 4,
+								y + sz_y / 4,
+								0xffffffff,
+								strings[chan].fret
+							)
+						end
+					end
+					draw_grid_measures(n)
 				end
 			end
 
-			draw_grid_measures()
+			if current_track then
+				-- draw whilte line at current cursor
+				p1_x = (cursorPos - first_note) / sz_factor + p[1] + offset
+				p1_y = p[2] + (current_track - 1) * (sz_y * tunings.strings + offset)
+				p2_x = (cursorPos - first_note) / sz_factor + p[1] + offset
+				p2_y = p[2] + tunings.strings * sz_y + (current_track - 1) * (sz_y * tunings.strings + offset)
+				col_rgba = 0xffffffff
+				ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 3.0)
 
-			p1_x = (cursorPos - first_note) / sz_factor + p[1] + offset
-			p1_y = p[2]
-			p2_x = (cursorPos - first_note) / sz_factor + p[1] + offset
-			p2_y = p[2] + tunings.strings * sz_y
-			col_rgba = 0xffffffff
-			ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 3.0)
+				-- Draw highlighting box for cursor
+				if play_state == 0 then
+					col = 0xffffc0cb
+					x = (cursorPos - first_note) / sz_factor + p[1] + offset
+					y = p[2]
+						+ (tunings.strings - 1 - focus_on) * sz_y
+						+ (current_track - 1) * (sz_y * tunings.strings + offset)
+					sz_x = (ppq / sz_factor)
 
-			-- Draw highlighting for cursor
-			if play_state == 0 then
-				col = 0xffffc0cb
-				x = (cursorPos - first_note) / sz_factor + p[1] + offset
-				y = p[2] + (tunings.strings - 1 - focus_on) * sz_y
-				sz_x = (ppq / sz_factor)
-
-				ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(), 3.0)
-				ImGui.DrawList_AddTextEx(draw_list, font, 20, x + sz_x / 4, y + sz_y / 4, 0xffffffff, fret)
+					ImGui.DrawList_AddRect(draw_list, x, y, x + sz_x, y + sz_y, col, 0.0, ImGui.DrawFlags_None(), 3.0)
+					ImGui.DrawList_AddTextEx(draw_list, font, 20, x + sz_x / 4, y + sz_y / 4, 0xffffffff, fret)
+				end
 			end
 			ImGui.EndTabItem(ctx)
 		end
@@ -432,38 +475,38 @@ function GetPlayOrEditCursorPos()
 	return cursor_pos
 end
 
-function keyboard_events()
+function keyboard_events(take)
 	-- multiply - dotted note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadMultiply()) then
 		dotted_note()
-		modify_note()
+		modify_note(take)
 	end
 
 	-- divide - triplet note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadDivide()) then
 		triplet_note()
-		modify_note()
+		modify_note(take)
 	end
 	-- plus minus doubles/halfs the note length
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadAdd()) then
 		ppq = ppq * 2
-		modify_note()
+		modify_note(take)
 	end
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadSubtract()) then
 		ppq = ppq / 2
-		modify_note()
+		modify_note(take)
 	end
 	-- Up down arrows to go through strings/channels
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow()) then
 		if not (fret == nil) then
-			enter_current_note(fret)
+			enter_current_note(take, fret)
 			fret = nil
 		end
 		focus_on = math.min(5, focus_on + 1)
 	end
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow()) then
 		if not (fret == nil) then
-			enter_current_note(fret)
+			enter_current_note(take, fret)
 			fret = nil
 		end
 		focus_on = math.max(0, focus_on - 1)
@@ -482,7 +525,7 @@ function keyboard_events()
 		-- Get the current cursor position
 		cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
 		if not (fret == nil) then
-			enter_current_note(fret)
+			enter_current_note(take, fret)
 			fret = nil
 		end
 		projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos + ppq)
@@ -492,7 +535,7 @@ function keyboard_events()
 		-- Get the current cursor position
 		cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
 		if not (fret == nil) then
-			enter_current_note(fret)
+			enter_current_note(take, fret)
 			fret = nil
 		end
 		projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos - ppq)
@@ -501,24 +544,24 @@ function keyboard_events()
 
 	-- Delete note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_Delete()) then
-		delete_note()
+		delete_note(take)
 	end
 
 	-- Palm Multe note
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_P()) then
 		palmmute_note()
-		modify_note()
+		modify_note(take)
 	end
 
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_C()) then
-		copy_notes()
+		copy_notes(take)
 	end
 
 	-- Enter
 	if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter())) or (ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter())) then
 		timelastpressed = nil
 		if not (fret == nil) then
-			enter_current_note(fret)
+			enter_current_note(take, fret)
 			fret = nil
 		end
 	end
@@ -526,7 +569,7 @@ function keyboard_events()
 	now = os.time()
 	for k, v in pairs(keypad) do
 		if ImGui.IsKeyPressed(ctx, k) then
-			delete_note()
+			delete_note(take)
 			if timelastpressed == nil then
 				fret = v
 			else
@@ -542,21 +585,20 @@ function keyboard_events()
 
 	if not (timelastpressed == nil) and not (fret == nil) then
 		if os.difftime(now, timelastpressed) > 1 then
-			enter_current_note(fret)
+			enter_current_note(take, fret)
 			fret = nil
 		end
 	end
 
 	if not (pitchmodified == nil) and (modifiednotedeleted == 1) then
 		fret = pitchmodified - strings[focus_on].note - pitch_offset
-		enter_current_note(fret)
+		enter_current_note(take, fret)
 		modifiednotedeleted = nil
 		fret = nil
 	end
 end
 
-function delete_note()
-	take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+function delete_note(take)
 	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
 	-- Get the current cursor position
 	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
@@ -569,8 +611,7 @@ function delete_note()
 	end
 end
 
-function modify_note()
-	take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+function modify_note(take)
 	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
 	-- Get the current cursor position
 	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
@@ -587,8 +628,7 @@ function modify_note()
 	end
 end
 
-function copy_notes()
-	take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+function copy_notes(take)
 	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
 	-- Get the current cursor position
 	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
@@ -613,7 +653,7 @@ function copy_notes()
 	reaper.SetEditCurPos(projTime, true, true)
 end
 
-function enter_current_note(fret)
+function enter_current_note(take, fret)
 	pitch = strings[focus_on].note + fret + pitch_offset
 	-- Set the velocity of the MIDI note (0 to 127)
 	velocity = 100
@@ -636,7 +676,28 @@ function loop()
 	ImGui.SetNextWindowSize(ctx, 400, 80, ImGui.Cond_FirstUseEver())
 	local visible, open = ImGui.Begin(ctx, "MidiTabulature", true, window_flags)
 	if visible then
-		keyboard_events()
+		if play_state == 0 then
+			proj = reaper.EnumProjects(-1)
+
+			tracknames = {}
+
+			for trackidx = 0, reaper.CountTracks(proj) - 1 do
+				track = reaper.GetTrack(proj, trackidx)
+				_, trackname = reaper.GetTrackName(track)
+				mediaitem = reaper.GetTrackMediaItem(track, 0)
+				take = reaper.GetTake(mediaitem, 0)
+				if not current_track then
+					current_track = 1
+					current_trackname = trackname
+					current_take = take
+				end
+				table.insert(tracknames, trackname)
+				takes[trackname] = take
+			end
+			printlog = false
+		end
+
+		keyboard_events(current_take)
 		gui()
 		ImGui.End(ctx)
 	end
