@@ -237,26 +237,6 @@ function draw_grid_measures(n)
 end
 
 function gui()
-	play_state = reaper.GetPlayState()
-	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
-	sz_factor = 8
-	sz_y = 36
-	lookback = lookback_measures * ppqinit * 4
-	first_note = cursorPos - lookback
-	max_ppq = first_note
-	max_ppq_end = first_note
-	if ImGui.CollapsingHeader(ctx, "DebugInfo") then
-		ImGui.Text(ctx, ("Note Length: 1/%.1f"):format(ppqinit / ppq * 4))
-		ImGui.Text(ctx, ("PPQ: %d"):format(ppq))
-		ImGui.Text(ctx, ("focus_on: %s"):format(focus_on))
-		ImGui.Text(ctx, ("isdotted: %s"):format(tostring(isdotted)))
-		ImGui.Text(ctx, ("istriplet: %s"):format(tostring(istriplet)))
-		ImGui.Text(ctx, ("palmmute: %s"):format(tostring(palmmute)))
-		ImGui.Text(ctx, ("MidiNotename: %s"):format(GetMIDINoteName(40, -1, false, false)))
-		ImGui.Text(ctx, ("cursorPos: %f"):format(cursorPos))
-		ImGui.Text(ctx, ("first_note: %f"):format(first_note))
-		ImGui.Text(ctx, ("max_ppq: %f"):format(max_ppq))
-	end
 	if ImGui.BeginTabBar(ctx, "MyTabBar", ImGui.TabBarFlags_None()) then
 		if ImGui.BeginTabItem(ctx, "Tabulature") then
 			if ImGui.BeginListBox(ctx, "listbox 1") then
@@ -276,6 +256,26 @@ function gui()
 					end
 				end
 				ImGui.EndListBox(ctx)
+			end
+			play_state = reaper.GetPlayState()
+			cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
+			sz_factor = 8
+			sz_y = 36
+			lookback = lookback_measures * ppqinit * 4
+			first_note = cursorPos - lookback
+			max_ppq = first_note
+			max_ppq_end = first_note
+			if ImGui.CollapsingHeader(ctx, "DebugInfo") then
+				ImGui.Text(ctx, ("Note Length: 1/%.1f"):format(ppqinit / ppq * 4))
+				ImGui.Text(ctx, ("PPQ: %d"):format(ppq))
+				ImGui.Text(ctx, ("focus_on: %s"):format(focus_on))
+				ImGui.Text(ctx, ("isdotted: %s"):format(tostring(isdotted)))
+				ImGui.Text(ctx, ("istriplet: %s"):format(tostring(istriplet)))
+				ImGui.Text(ctx, ("palmmute: %s"):format(tostring(palmmute)))
+				ImGui.Text(ctx, ("MidiNotename: %s"):format(GetMIDINoteName(40, -1, false, false)))
+				ImGui.Text(ctx, ("cursorPos: %f"):format(cursorPos))
+				ImGui.Text(ctx, ("first_note: %f"):format(first_note))
+				ImGui.Text(ctx, ("max_ppq: %f"):format(max_ppq))
 			end
 
 			p = { ImGui.GetCursorScreenPos(ctx) }
@@ -670,6 +670,19 @@ function enter_current_note(take, fret)
 	timelastpressed = nil
 end
 
+-- Function to check if a take is a MIDI take
+function IsMIDITake(take)
+	if not take then
+		return false
+	end
+
+	-- Get the TAKEFX_INST chunk
+	local _, chunk = reaper.GetItemStateChunk(reaper.GetMediaItemTake_Item(take), "", false)
+
+	-- Check if the TAKEFX_INST chunk contains "MIDI"
+	return string.find(chunk, "MIDI") ~= nil
+end
+
 -- initalize ReaImGui
 function loop()
 	ImGui.PushFont(ctx, font)
@@ -685,14 +698,18 @@ function loop()
 				track = reaper.GetTrack(proj, trackidx)
 				_, trackname = reaper.GetTrackName(track)
 				mediaitem = reaper.GetTrackMediaItem(track, 0)
-				take = reaper.GetTake(mediaitem, 0)
-				if not current_track then
-					current_track = 1
-					current_trackname = trackname
-					current_take = take
+				if mediaitem then
+					take = reaper.GetTake(mediaitem, 0)
+					if IsMIDITake(take) then
+						if not current_track then
+							current_track = 1
+							current_trackname = trackname
+							current_take = take
+						end
+						table.insert(tracknames, trackname)
+						takes[trackname] = take
+					end
 				end
-				table.insert(tracknames, trackname)
-				takes[trackname] = take
 			end
 			printlog = false
 		end
