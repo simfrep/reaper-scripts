@@ -12,7 +12,7 @@ end
 window_flags = ImGui.WindowFlags_TopMost()
 
 tunings = {
-	strings = 6,
+	strings = 8,
 }
 ppqinit = 960
 ppq = 960
@@ -29,7 +29,8 @@ current_track = nil
 
 focus_on = 0
 max_ppq_end = nil
-pmnote = 15
+pmnote = 30
+
 lookback_measures = 1
 number_shown_tracks = 3
 timelastpressed = nil
@@ -39,15 +40,14 @@ offset = 25
 take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
 
 strings = {}
-strings[0] = { color = 0xff0000d9, note = 40, fret = "" } -- E -- 6 strings guitar
-strings[1] = { color = 0xdaa520d9, note = 45, fret = "" } -- A
-strings[2] = { color = 0x008000d9, note = 50, fret = "" } -- D
-strings[3] = { color = 0x0000ffd9, note = 55, fret = "" } -- G
-strings[4] = { color = 0x800080d9, note = 59, fret = "" } -- B
-strings[5] = { color = 0x4b139ad9, note = 64, fret = "" } -- E
-strings[6] = { color = 0xC50C4Cd9, note = 35 } -- B -- 7 strings guitar
-strings[7] = { color = 0x808000d9, note = 30 } -- F# -- 8 strings guitar
-strings[8] = { color = 0x6C4F00d9, note = 25 } -- C# -- 9 strings guitar
+strings[0] = { color = 0x808000d9, note = 42, fret = "" } -- F# -- 8 strings guitar
+strings[1] = { color = 0xC50C4Cd9, note = 47, fret = "" } -- B -- 7 strings guitar
+strings[2] = { color = 0xff0000d9, note = 52, fret = "" } -- E -- 6 strings guitar
+strings[3] = { color = 0xdaa520d9, note = 57, fret = "" } -- A
+strings[4] = { color = 0x008000d9, note = 62, fret = "" } -- D
+strings[5] = { color = 0x0000ffd9, note = 67, fret = "" } -- G
+strings[6] = { color = 0x800080d9, note = 71, fret = "" } -- B
+strings[7] = { color = 0x4b139ad9, note = 76, fret = "" } -- E
 
 keypad = {}
 keypad[ImGui.Key_Keypad0()] = 0
@@ -401,42 +401,31 @@ end
 
 function set_std_tuning()
 	if tunings.strings <= 6 then
-		strings[0].note = 40
-		strings[1].note = 45
-		strings[2].note = 50
-		strings[3].note = 55
-		strings[4].note = 59
-		strings[5].note = 64
+		strings[0].note = 52
+		strings[1].note = 57
+		strings[2].note = 62
+		strings[3].note = 67
+		strings[4].note = 71
+		strings[5].note = 76
 	end
 	if tunings.strings == 7 then
-		strings[0].note = 35
-		strings[1].note = 40
-		strings[2].note = 45
-		strings[3].note = 50
-		strings[4].note = 55
-		strings[5].note = 59
-		strings[6].note = 64
+		strings[0].note = 47
+		strings[1].note = 52
+		strings[2].note = 57
+		strings[3].note = 62
+		strings[4].note = 67
+		strings[5].note = 71
+		strings[6].note = 76
 	end
 	if tunings.strings == 8 then
-		strings[0].note = 30
-		strings[1].note = 35
-		strings[2].note = 40
-		strings[3].note = 45
-		strings[4].note = 50
-		strings[5].note = 55
-		strings[6].note = 59
-		strings[7].note = 64
-	end
-	if tunings.strings == 9 then
-		strings[0].note = 25
-		strings[1].note = 30
-		strings[2].note = 35
-		strings[3].note = 40
-		strings[4].note = 45
-		strings[5].note = 50
-		strings[6].note = 55
-		strings[7].note = 59
-		strings[8].note = 64
+		strings[0].note = 42
+		strings[1].note = 47
+		strings[2].note = 52
+		strings[3].note = 57
+		strings[4].note = 62
+		strings[5].note = 67
+		strings[6].note = 71
+		strings[7].note = 76
 	end
 end
 
