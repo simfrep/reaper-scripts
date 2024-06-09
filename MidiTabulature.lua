@@ -1,6 +1,19 @@
 local ctx = reaper.ImGui_CreateContext("MidiTabulature")
 local size = reaper.GetAppVersion():match("OSX") and 12 or 14
+local r = reaper
+local FLT_MIN, FLT_MAX = r.ImGui_NumericLimits_Float()
 
+-- https://gist.github.com/tylerneylon/81333721109155b2d244#file-copy-lua-L29-34
+function copy1(obj)
+	if type(obj) ~= "table" then
+		return obj
+	end
+	local res = {}
+	for k, v in pairs(obj) do
+		res[copy1(k)] = copy1(v)
+	end
+	return res
+end
 widgets = {}
 local ImGui = {}
 for name, func in pairs(reaper) do
@@ -14,6 +27,7 @@ window_flags = ImGui.WindowFlags_TopMost()
 tunings = {
 	strings = 8,
 }
+trackTunings = {}
 ppqinit = 960
 ppq = 960
 pitch_offset = 0
@@ -240,7 +254,7 @@ end
 function gui()
 	if ImGui.BeginTabBar(ctx, "MyTabBar", ImGui.TabBarFlags_None()) then
 		if ImGui.BeginTabItem(ctx, "Tabulature") then
-			if ImGui.BeginListBox(ctx, "") then
+			if ImGui.BeginListBox(ctx, "", -FLT_MIN) then
 				for n, v in ipairs(tracknames) do
 					local is_selected = current_track == n
 					if ImGui.Selectable(ctx, v, is_selected) then
@@ -254,6 +268,49 @@ function gui()
 						trackname = v
 						take = takes[trackname]
 						ImGui.SetItemDefaultFocus(ctx)
+						if ImGui.Button(ctx, "Standard") then
+							set_std_tuning(n)
+						end
+						ImGui.SameLine(ctx)
+						if ImGui.Button(ctx, "Drop") then
+							set_std_tuning(n)
+							trackTunings[n][0].note = trackTunings[n][0].note - 2
+						end
+						ImGui.SameLine(ctx)
+						if ImGui.Button(ctx, "Drums") then
+							for i = 0, tunings.strings - 1 do
+								trackTunings[n][i].note = 0
+							end
+						end
+						ImGui.SameLine(ctx)
+						for i = 0, tunings.strings - 1 do
+							-- Arrow buttons with Repeater
+							ImGui.SameLine(ctx)
+							stringname = GetMIDINoteName(trackTunings[n][i].note, -2, false, false)
+							r.ImGui_Text(ctx, ("%s(%d)"):format(stringname, trackTunings[n][i].note))
+						end
+						_, trackTunings[n][0].note, trackTunings[n][1].note, trackTunings[n][2].note, trackTunings[n][3].note =
+							r.ImGui_SliderInt4(
+								ctx,
+								"1",
+								trackTunings[n][0].note,
+								trackTunings[n][1].note,
+								trackTunings[n][2].note,
+								trackTunings[n][3].note,
+								36,
+								100
+							)
+						_, trackTunings[n][4].note, trackTunings[n][5].note, trackTunings[n][6].note, trackTunings[n][7].note =
+							r.ImGui_SliderInt4(
+								ctx,
+								"2",
+								trackTunings[n][4].note,
+								trackTunings[n][5].note,
+								trackTunings[n][6].note,
+								trackTunings[n][7].note,
+								36,
+								100
+							)
 					end
 				end
 				ImGui.EndListBox(ctx)
@@ -273,10 +330,11 @@ function gui()
 				ImGui.Text(ctx, ("isdotted: %s"):format(tostring(isdotted)))
 				ImGui.Text(ctx, ("istriplet: %s"):format(tostring(istriplet)))
 				ImGui.Text(ctx, ("palmmute: %s"):format(tostring(palmmute)))
-				ImGui.Text(ctx, ("MidiNotename: %s"):format(GetMIDINoteName(40, -1, false, false)))
+				ImGui.Text(ctx, ("MidiNotename: %s"):format(GetMIDINoteName(40, -2, false, false)))
 				ImGui.Text(ctx, ("cursorPos: %f"):format(cursorPos))
 				ImGui.Text(ctx, ("first_note: %f"):format(first_note))
 				ImGui.Text(ctx, ("max_ppq: %f"):format(max_ppq))
+				ImGui.Text(ctx, ("current_track: %s"):format(current_track))
 			end
 
 			p = { ImGui.GetCursorScreenPos(ctx) }
@@ -286,7 +344,7 @@ function gui()
 				if n <= number_shown_tracks then
 					-- draw string tunings
 					for j = 0, tunings.strings - 1 do
-						stringname = GetMIDINoteName(strings[j].note, -1, false, false)
+						stringname = GetMIDINoteName(trackTunings[n][j].note, -2, false, false)
 						x = p[1]
 						y = p[2]
 							+ (tunings.strings - 1 - j) * sz_y
@@ -319,12 +377,12 @@ function gui()
 							max_ppq_end = endppqposOut
 						end
 						if chan <= tunings.strings - 1 then
-							strings[chan].fret = pitch - strings[chan].note
+							trackTunings[n][chan].fret = pitch - trackTunings[n][chan].note
 							sz_x = ((endppqposOut - startppqposOut) / sz_factor)
 							x = (startppqposOut - first_note) / sz_factor + p[1] + offset
 							y = p[2] + (tunings.strings - 1 - chan) * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
 
-							col = strings[chan].color
+							col = trackTunings[n][chan].color
 
 							if x + sz_x > p[1] + offset then
 								_x = math.max(x, p[1] + offset)
@@ -358,7 +416,7 @@ function gui()
 									x + sz_x / 4,
 									y + sz_y / 4,
 									0xffffffff,
-									strings[chan].fret
+									trackTunings[n][chan].fret
 								)
 							end
 						end
@@ -399,33 +457,16 @@ function gui()
 	end
 end
 
-function set_std_tuning()
-	if tunings.strings <= 6 then
-		strings[0].note = 52
-		strings[1].note = 57
-		strings[2].note = 62
-		strings[3].note = 67
-		strings[4].note = 71
-		strings[5].note = 76
-	end
-	if tunings.strings == 7 then
-		strings[0].note = 47
-		strings[1].note = 52
-		strings[2].note = 57
-		strings[3].note = 62
-		strings[4].note = 67
-		strings[5].note = 71
-		strings[6].note = 76
-	end
+function set_std_tuning(n)
 	if tunings.strings == 8 then
-		strings[0].note = 42
-		strings[1].note = 47
-		strings[2].note = 52
-		strings[3].note = 57
-		strings[4].note = 62
-		strings[5].note = 67
-		strings[6].note = 71
-		strings[7].note = 76
+		trackTunings[n][0].note = 42
+		trackTunings[n][1].note = 47
+		trackTunings[n][2].note = 52
+		trackTunings[n][3].note = 57
+		trackTunings[n][4].note = 62
+		trackTunings[n][5].note = 67
+		trackTunings[n][6].note = 71
+		trackTunings[n][7].note = 76
 	end
 end
 
@@ -457,7 +498,7 @@ function configurationtab()
 		end
 	end
 	for i = 0, tunings.strings - 1 do
-		stringname = GetMIDINoteName(strings[i].note, -1, false, false)
+		stringname = GetMIDINoteName(strings[i].note, -2, false, false)
 		_, strings[i].note = ImGui.InputInt(ctx, stringname, strings[i].note, 1)
 	end
 end
@@ -588,7 +629,7 @@ function keyboard_events(take)
 	end
 
 	if not (pitchmodified == nil) and (modifiednotedeleted == 1) then
-		fret = pitchmodified - strings[focus_on].note - pitch_offset
+		fret = pitchmodified - trackTunings[current_track][focus_on].note - pitch_offset
 		enter_current_note(take, fret)
 		modifiednotedeleted = nil
 		fret = nil
@@ -651,7 +692,7 @@ function copy_notes(take)
 end
 
 function enter_current_note(take, fret)
-	pitch = strings[focus_on].note + fret + pitch_offset
+	pitch = trackTunings[current_track][focus_on].note + fret + pitch_offset
 	-- Set the velocity of the MIDI note (0 to 127)
 	velocity = 100
 	-- Set the length of the MIDI note in PPQ (one quarter note)
@@ -709,6 +750,13 @@ function loop()
 							_trackcount = _trackcount + 1
 						end
 					end
+				end
+			end
+
+			-- initialize trackTunings
+			if printlog then
+				for trackidx = 0, _trackcount do
+					trackTunings[trackidx] = copy1(strings)
 				end
 			end
 			printlog = false
