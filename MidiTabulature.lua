@@ -31,6 +31,7 @@ focus_on = 0
 max_ppq_end = nil
 pmnote = 15
 lookback_measures = 1
+number_shown_tracks = 3
 timelastpressed = nil
 pitchmodified = nil
 modifiednotedeleted = nil
@@ -239,7 +240,7 @@ end
 function gui()
 	if ImGui.BeginTabBar(ctx, "MyTabBar", ImGui.TabBarFlags_None()) then
 		if ImGui.BeginTabItem(ctx, "Tabulature") then
-			if ImGui.BeginListBox(ctx, "listbox 1") then
+			if ImGui.BeginListBox(ctx, "") then
 				for n, v in ipairs(tracknames) do
 					local is_selected = current_track == n
 					if ImGui.Selectable(ctx, v, is_selected) then
@@ -282,81 +283,87 @@ function gui()
 			draw_list = ImGui.GetWindowDrawList(ctx)
 
 			for n, v in ipairs(tracknames) do
-				-- draw string tunings
-				for j = 0, tunings.strings - 1 do
-					stringname = GetMIDINoteName(strings[j].note, -1, false, false)
-					x = p[1]
-					y = p[2] + (tunings.strings - 1 - j) * sz_y + sz_y / 4 + (n - 1) * (sz_y * tunings.strings + offset)
-					ImGui.DrawList_AddTextEx(draw_list, font, 20, x, y, 0xffffffff, stringname)
-					-- draw separator
-					p1_x = p[1] + offset
-					p1_y = p[2] + (n - 1) * (sz_y * tunings.strings + offset)
+				if n <= number_shown_tracks then
+					-- draw string tunings
+					for j = 0, tunings.strings - 1 do
+						stringname = GetMIDINoteName(strings[j].note, -1, false, false)
+						x = p[1]
+						y = p[2]
+							+ (tunings.strings - 1 - j) * sz_y
+							+ sz_y / 4
+							+ (n - 1) * (sz_y * tunings.strings + offset)
+						ImGui.DrawList_AddTextEx(draw_list, font, 20, x, y, 0xffffffff, stringname)
+						-- draw separator
+						p1_x = p[1] + offset
+						p1_y = p[2] + (n - 1) * (sz_y * tunings.strings + offset)
 
-					p2_x = p[1] + offset
-					p2_y = p[2] + tunings.strings * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
+						p2_x = p[1] + offset
+						p2_y = p[2] + tunings.strings * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
 
-					col_rgba = 0x00ffffff
-					ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
-				end
-				trackname = v
-				take = takes[trackname]
-				--take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
-				retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
-				ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
-
-				for j = 0, notes - 1 do
-					retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
-					if startppqposOut > max_ppq then
-						max_ppq = startppqposOut
+						col_rgba = 0x00ffffff
+						ImGui.DrawList_AddLine(draw_list, p1_x, p1_y, p2_x, p2_y, col_rgba, 2.0)
 					end
-					if endppqposOut > max_ppq_end then
-						max_ppq_end = endppqposOut
-					end
-					if chan <= tunings.strings - 1 then
-						strings[chan].fret = pitch - strings[chan].note
-						sz_x = ((endppqposOut - startppqposOut) / sz_factor)
-						x = (startppqposOut - first_note) / sz_factor + p[1] + offset
-						y = p[2] + (tunings.strings - 1 - chan) * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
+					trackname = v
+					take = takes[trackname]
+					--take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+					retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+					ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
 
-						col = strings[chan].color
-
-						if x + sz_x > p[1] + offset then
-							_x = math.max(x, p[1] + offset)
-							ImGui.DrawList_AddRectFilled(
-								draw_list,
-								_x,
-								y,
-								x + sz_x,
-								y + sz_y,
-								col,
-								0.0,
-								ImGui.DrawFlags_None()
-							)
-							ImGui.DrawList_AddRect(
-								draw_list,
-								_x,
-								y,
-								x + sz_x,
-								y + sz_y,
-								0xffffffff,
-								0.0,
-								ImGui.DrawFlags_None(),
-								1.0
-							)
+					for j = 0, notes - 1 do
+						retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel =
+							reaper.MIDI_GetNote(take, j)
+						if startppqposOut > max_ppq then
+							max_ppq = startppqposOut
 						end
-						if x + sz_x / 4 > p[1] + offset then
-							ImGui.DrawList_AddTextEx(
-								draw_list,
-								font,
-								20,
-								x + sz_x / 4,
-								y + sz_y / 4,
-								0xffffffff,
-								strings[chan].fret
-							)
+						if endppqposOut > max_ppq_end then
+							max_ppq_end = endppqposOut
 						end
+						if chan <= tunings.strings - 1 then
+							strings[chan].fret = pitch - strings[chan].note
+							sz_x = ((endppqposOut - startppqposOut) / sz_factor)
+							x = (startppqposOut - first_note) / sz_factor + p[1] + offset
+							y = p[2] + (tunings.strings - 1 - chan) * sz_y + (n - 1) * (sz_y * tunings.strings + offset)
+
+							col = strings[chan].color
+
+							if x + sz_x > p[1] + offset then
+								_x = math.max(x, p[1] + offset)
+								ImGui.DrawList_AddRectFilled(
+									draw_list,
+									_x,
+									y,
+									x + sz_x,
+									y + sz_y,
+									col,
+									0.0,
+									ImGui.DrawFlags_None()
+								)
+								ImGui.DrawList_AddRect(
+									draw_list,
+									_x,
+									y,
+									x + sz_x,
+									y + sz_y,
+									0xffffffff,
+									0.0,
+									ImGui.DrawFlags_None(),
+									1.0
+								)
+							end
+							if x + sz_x / 4 > p[1] + offset then
+								ImGui.DrawList_AddTextEx(
+									draw_list,
+									font,
+									20,
+									x + sz_x / 4,
+									y + sz_y / 4,
+									0xffffffff,
+									strings[chan].fret
+								)
+							end
+						end
+						draw_grid_measures(n)
 					end
-					draw_grid_measures(n)
 				end
 			end
 
@@ -435,6 +442,7 @@ end
 
 function configurationtab()
 	_, lookback_measures = ImGui.InputInt(ctx, "Lookback", lookback_measures, 1)
+	_, number_shown_tracks = ImGui.InputInt(ctx, "Number Shown Tracks", number_shown_tracks, 1)
 
 	ImGui.SeparatorText(ctx, "Tuning")
 
@@ -502,7 +510,7 @@ function keyboard_events(take)
 			enter_current_note(take, fret)
 			fret = nil
 		end
-		focus_on = math.min(5, focus_on + 1)
+		focus_on = math.min(7, focus_on + 1)
 	end
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow()) then
 		if not (fret == nil) then
@@ -693,21 +701,24 @@ function loop()
 			proj = reaper.EnumProjects(-1)
 
 			tracknames = {}
-
+			_trackcount = 0
 			for trackidx = 0, reaper.CountTracks(proj) - 1 do
-				track = reaper.GetTrack(proj, trackidx)
-				_, trackname = reaper.GetTrackName(track)
-				mediaitem = reaper.GetTrackMediaItem(track, 0)
-				if mediaitem then
-					take = reaper.GetTake(mediaitem, 0)
-					if IsMIDITake(take) then
-						if not current_track then
-							current_track = 1
-							current_trackname = trackname
-							current_take = take
+				if _trackcount < number_shown_tracks then
+					track = reaper.GetTrack(proj, trackidx)
+					_, trackname = reaper.GetTrackName(track)
+					mediaitem = reaper.GetTrackMediaItem(track, 0)
+					if mediaitem then
+						take = reaper.GetTake(mediaitem, 0)
+						if IsMIDITake(take) then
+							if not current_track then
+								current_track = 1
+								current_trackname = trackname
+								current_take = take
+							end
+							table.insert(tracknames, trackname)
+							takes[trackname] = take
+							_trackcount = _trackcount + 1
 						end
-						table.insert(tracknames, trackname)
-						takes[trackname] = take
 					end
 				end
 			end
