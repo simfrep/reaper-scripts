@@ -1,6 +1,7 @@
-local ctx = reaper.ImGui_CreateContext("MidiTabulature")
-local size = reaper.GetAppVersion():match("OSX") and 12 or 14
 local r = reaper
+local ctx = r.ImGui_CreateContext("MidiTabulature")
+local size = r.GetAppVersion():match("OSX") and 12 or 14
+
 local FLT_MIN, FLT_MAX = r.ImGui_NumericLimits_Float()
 
 -- https://gist.github.com/tylerneylon/81333721109155b2d244#file-copy-lua-L29-34
@@ -51,7 +52,7 @@ timelastpressed = nil
 pitchmodified = nil
 modifiednotedeleted = nil
 offset = 25
-take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
+take = r.MIDIEditor_GetTake(r.MIDIEditor_GetActive())
 
 strings = {}
 strings[0] = { color = 0x808000d9, note = 42, fret = "" } -- F# -- 8 strings guitar
@@ -212,9 +213,9 @@ function draw_grid_measures(n)
 	next_beat = cursorPos - (cursorPos % stepsize) - stepsize * 4
 	for ppqpos = next_beat, (max_ppq + 40 * ppqinit), (stepsize / 4) do
 		if ppqpos % stepsize == 0 then
-			time = reaper.MIDI_GetProjTimeFromPPQPos(take, ppqpos)
-			local retval, measures, cml, fullbeats, cdenom = reaper.TimeMap2_timeToBeats(0, time)
-			local retval_2, measures_2, cml_2, fullbeats_2, cdenom_2 = reaper.TimeMap2_timeToBeats(0, time + 5) --NOTE: 10 is arbirary, but needed because offset (all_measure_length) is calculated at each new measure (and it can change).
+			time = r.MIDI_GetProjTimeFromPPQPos(take, ppqpos)
+			local retval, measures, cml, fullbeats, cdenom = r.TimeMap2_timeToBeats(0, time)
+			local retval_2, measures_2, cml_2, fullbeats_2, cdenom_2 = r.TimeMap2_timeToBeats(0, time + 5) --NOTE: 10 is arbirary, but needed because offset (all_measure_length) is calculated at each new measure (and it can change).
 			local beat_number = fullbeats_2 - fullbeats
 			local measures_number = measures_2 - measures
 
@@ -315,8 +316,8 @@ function gui()
 				end
 				ImGui.EndListBox(ctx)
 			end
-			play_state = reaper.GetPlayState()
-			cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
+			play_state = r.GetPlayState()
+			cursorPos = r.MIDI_GetPPQPosFromProjTime(take, GetPlayOrEditCursorPos())
 			sz_factor = 8
 			sz_y = 36
 			lookback = lookback_measures * ppqinit * 4
@@ -363,13 +364,12 @@ function gui()
 					end
 					trackname = v
 					take = takes[trackname]
-					--take = reaper.MIDIEditor_GetTake(reaper.MIDIEditor_GetActive())
-					retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+					--take = r.MIDIEditor_GetTake(r.MIDIEditor_GetActive())
+					retval, notes, ccs, sysex = r.MIDI_CountEvts(take)
 					ImGui.PushItemWidth(ctx, -ImGui.GetFontSize(ctx) * 15)
 
 					for j = 0, notes - 1 do
-						retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel =
-							reaper.MIDI_GetNote(take, j)
+						retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = r.MIDI_GetNote(take, j)
 						if startppqposOut > max_ppq then
 							max_ppq = startppqposOut
 						end
@@ -506,9 +506,9 @@ end
 function GetPlayOrEditCursorPos()
 	local cursor_pos
 	if play_state == 1 or play_state == 5 then
-		cursor_pos = reaper.GetPlayPosition()
+		cursor_pos = r.GetPlayPosition()
 	else
-		cursor_pos = reaper.GetCursorPosition()
+		cursor_pos = r.GetCursorPosition()
 	end
 	return cursor_pos
 end
@@ -552,32 +552,32 @@ function keyboard_events(take)
 
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_Space()) then
 		if play_state == 0 then
-			reaper.OnPlayButton()
+			r.OnPlayButton()
 		else
-			reaper.OnStopButton()
+			r.OnStopButton()
 		end
 	end
 
 	-- Move the cursor
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_RightArrow()) then
 		-- Get the current cursor position
-		cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+		cursorPos = r.MIDI_GetPPQPosFromProjTime(take, r.GetCursorPosition())
 		if not (fret == nil) then
 			enter_current_note(take, fret)
 			fret = nil
 		end
-		projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos + ppq)
-		reaper.SetEditCurPos(projTime, true, true)
+		projTime = r.MIDI_GetProjTimeFromPPQPos(take, cursorPos + ppq)
+		r.SetEditCurPos(projTime, true, true)
 	end
 	if ImGui.IsKeyPressed(ctx, ImGui.Key_LeftArrow()) then
 		-- Get the current cursor position
-		cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+		cursorPos = r.MIDI_GetPPQPosFromProjTime(take, r.GetCursorPosition())
 		if not (fret == nil) then
 			enter_current_note(take, fret)
 			fret = nil
 		end
-		projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos - ppq)
-		reaper.SetEditCurPos(projTime, true, true)
+		projTime = r.MIDI_GetProjTimeFromPPQPos(take, cursorPos - ppq)
+		r.SetEditCurPos(projTime, true, true)
 	end
 
 	-- Delete note
@@ -637,44 +637,44 @@ function keyboard_events(take)
 end
 
 function delete_note(take)
-	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+	retval, notes, ccs, sysex = r.MIDI_CountEvts(take)
 	-- Get the current cursor position
-	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+	cursorPos = r.MIDI_GetPPQPosFromProjTime(take, r.GetCursorPosition())
 	for j = 0, notes - 1 do
-		retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = reaper.MIDI_GetNote(take, j)
+		retval, sel, muted, startppqposOut, endppqposOut, chan, pitch, vel = r.MIDI_GetNote(take, j)
 
 		if (startppqposOut == cursorPos) and (chan == focus_on) then
-			reaper.MIDI_DeleteNote(take, j)
+			r.MIDI_DeleteNote(take, j)
 		end
 	end
 end
 
 function modify_note(take)
-	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+	retval, notes, ccs, sysex = r.MIDI_CountEvts(take)
 	-- Get the current cursor position
-	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+	cursorPos = r.MIDI_GetPPQPosFromProjTime(take, r.GetCursorPosition())
 	for j = 0, notes - 1 do
-		_, _, _, _startppqpos, _, _chan, _pitch, _ = reaper.MIDI_GetNote(take, j)
+		_, _, _, _startppqpos, _, _chan, _pitch, _ = r.MIDI_GetNote(take, j)
 
 		if (_startppqpos == cursorPos) and (_chan == focus_on) then
 			-- use this variable to reenter note on the next frame
 			modifiednotedeleted = 1
 			pitchmodified = _pitch
-			reaper.MIDI_DeleteNote(take, j)
+			r.MIDI_DeleteNote(take, j)
 			break
 		end
 	end
 end
 
 function copy_notes(take)
-	retval, notes, ccs, sysex = reaper.MIDI_CountEvts(take)
+	retval, notes, ccs, sysex = r.MIDI_CountEvts(take)
 	-- Get the current cursor position
-	cursorPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+	cursorPos = r.MIDI_GetPPQPosFromProjTime(take, r.GetCursorPosition())
 	for j = 0, notes - 1 do
-		_, _, _, _startppqpos, _endppqpos, _chan, _pitch, _velo = reaper.MIDI_GetNote(take, j)
+		_, _, _, _startppqpos, _endppqpos, _chan, _pitch, _velo = r.MIDI_GetNote(take, j)
 
 		if _startppqpos == cursorPos then
-			reaper.MIDI_InsertNote(
+			r.MIDI_InsertNote(
 				take,
 				false,
 				false,
@@ -687,8 +687,8 @@ function copy_notes(take)
 			)
 		end
 	end
-	projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, cursorPos + _endppqpos - _startppqpos)
-	reaper.SetEditCurPos(projTime, true, true)
+	projTime = r.MIDI_GetProjTimeFromPPQPos(take, cursorPos + _endppqpos - _startppqpos)
+	r.SetEditCurPos(projTime, true, true)
 end
 
 function enter_current_note(take, fret)
@@ -696,13 +696,13 @@ function enter_current_note(take, fret)
 	-- Set the velocity of the MIDI note (0 to 127)
 	velocity = 100
 	-- Set the length of the MIDI note in PPQ (one quarter note)
-	ppqPos = reaper.MIDI_GetPPQPosFromProjTime(take, reaper.GetCursorPosition())
+	ppqPos = r.MIDI_GetPPQPosFromProjTime(take, r.GetCursorPosition())
 	-- Convert PPQ to project seconds
-	projTime = reaper.MIDI_GetProjTimeFromPPQPos(take, ppqPos)
+	projTime = r.MIDI_GetProjTimeFromPPQPos(take, ppqPos)
 	-- Insert the MIDI note
-	reaper.MIDI_InsertNote(take, false, false, cursorPos, cursorPos + ppq, focus_on, pitch, velocity, false)
+	r.MIDI_InsertNote(take, false, false, cursorPos, cursorPos + ppq, focus_on, pitch, velocity, false)
 	if palmmute then
-		reaper.MIDI_InsertNote(take, false, false, cursorPos, cursorPos + ppq, 15, pmnote, velocity, false)
+		r.MIDI_InsertNote(take, false, false, cursorPos, cursorPos + ppq, 15, pmnote, velocity, false)
 	end
 	-- reset value
 	timelastpressed = nil
@@ -715,7 +715,7 @@ function IsMIDITake(take)
 	end
 
 	-- Get the TAKEFX_INST chunk
-	local _, chunk = reaper.GetItemStateChunk(reaper.GetMediaItemTake_Item(take), "", false)
+	local _, chunk = r.GetItemStateChunk(r.GetMediaItemTake_Item(take), "", false)
 
 	-- Check if the TAKEFX_INST chunk contains "MIDI"
 	return string.find(chunk, "MIDI") ~= nil
@@ -728,17 +728,17 @@ function loop()
 	local visible, open = ImGui.Begin(ctx, "MidiTabulature", true, window_flags)
 	if visible then
 		if play_state == 0 then
-			proj = reaper.EnumProjects(-1)
+			proj = r.EnumProjects(-1)
 
 			tracknames = {}
 			_trackcount = 0
-			for trackidx = 0, reaper.CountTracks(proj) - 1 do
+			for trackidx = 0, r.CountTracks(proj) - 1 do
 				if _trackcount < number_shown_tracks then
-					track = reaper.GetTrack(proj, trackidx)
-					_, trackname = reaper.GetTrackName(track)
-					mediaitem = reaper.GetTrackMediaItem(track, 0)
+					track = r.GetTrack(proj, trackidx)
+					_, trackname = r.GetTrackName(track)
+					mediaitem = r.GetTrackMediaItem(track, 0)
 					if mediaitem then
-						take = reaper.GetTake(mediaitem, 0)
+						take = r.GetTake(mediaitem, 0)
 						if IsMIDITake(take) then
 							if not current_track then
 								current_track = 1
@@ -769,10 +769,10 @@ function loop()
 	ImGui.PopFont(ctx)
 
 	if open then
-		reaper.defer(loop)
+		r.defer(loop)
 	else
 		ImGui.DestroyContext(ctx)
 	end
 end
 
-reaper.defer(loop)
+r.defer(loop)
